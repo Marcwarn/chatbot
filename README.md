@@ -4,12 +4,14 @@ En komplett plattform för personlighetsbedömningar med AI-genererade frågor o
 
 ## 📦 Vad Finns I Detta Repo?
 
-### 1. 🎯 Personality Assessment API (api_main.py)
-**Huvudfokus**: AI-driven REST API för personlighetsbedömningar
+### 1. 🔒 GDPR-Compliant Assessment API (api_main_gdpr.py) ⭐ **REKOMMENDERAD**
+**Huvudfokus**: AI-driven REST API med **FULL GDPR-compliance**
 
 - **Big Five, DISC, Jung/MBTI** assessments
 - **Claude AI** genererar dynamiska frågor och analyserar svar
-- **RESTful API** för enkel integration med Lovable eller andra frontends
+- **🔒 GDPR-compliant**: Consent management, data export, right to erasure
+- **📊 Databas**: SQLite med audit logging och data retention
+- **🛡️ Privacy by Design**: Pseudonymisering, kryptering, anonymisering
 - **Svenska & Engelska** språkstöd
 
 **Quick Start:**
@@ -17,14 +19,33 @@ En komplett plattform för personlighetsbedömningar med AI-genererade frågor o
 pip install -r requirements.txt
 cp .env.example .env
 # Lägg till ANTHROPIC_API_KEY i .env
+python api_main_gdpr.py
+```
+
+🔒 **GDPR Guide:** Se [GDPR_GUIDE.md](GDPR_GUIDE.md)
+📖 **API Docs:** Se [ASSESSMENT_README.md](ASSESSMENT_README.md)
+🔗 **Lovable Integration:** Se [LOVABLE_INTEGRATION.md](LOVABLE_INTEGRATION.md)
+🧪 **Testa API:** `python test_gdpr_api.py`
+
+---
+
+### 2. 🎯 Basic Assessment API (api_main.py)
+**Enklare version**: AI-driven REST API utan databas (in-memory only)
+
+- Samma features som GDPR-versionen men utan persistent storage
+- Bra för quick prototyping och testing
+- Ingen databas krävs
+
+**Quick Start:**
+```bash
 python api_main.py
 ```
 
-📖 **Dokumentation:** Se [ASSESSMENT_README.md](ASSESSMENT_README.md)
-🔗 **Lovable Integration:** Se [LOVABLE_INTEGRATION.md](LOVABLE_INTEGRATION.md)
-🧪 **Testa API:** `python test_api.py`
+🧪 **Testa:** `python test_api.py`
 
-### 2. 💬 Streamlit Chatbot (streamlit_app.py)
+---
+
+### 3. 💬 Streamlit Chatbot (streamlit_app.py)
 **Bonus**: En enkel chatbot template med OpenAI GPT-3.5
 
 ```bash
@@ -33,7 +54,7 @@ streamlit run streamlit_app.py
 
 ---
 
-## 🚀 Snabbstart - Assessment API
+## 🚀 Snabbstart - GDPR-Compliant API
 
 ### Steg 1: Installation
 ```bash
@@ -49,18 +70,51 @@ Redigera `.env`:
 ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
 ```
 
-### Steg 3: Starta API
+### Steg 3: Starta GDPR-Compliant API
 ```bash
-python api_main.py
+python api_main_gdpr.py
 ```
 
 API körs på: http://localhost:8000
 Swagger UI: http://localhost:8000/docs
+Database: `assessment_gdpr.db` (skapas automatiskt)
 
 ### Steg 4: Testa
 ```bash
-python test_api.py
+python test_gdpr_api.py
 ```
+
+Välj option 1 för komplett GDPR flow test (consent → assessment → export → delete)
+
+---
+
+## 🔒 GDPR Features
+
+### ✅ Full GDPR Compliance
+
+- **Consent Management**: Explicit samtycke innan data samlas
+- **Right to Access**: Exportera all data (JSON)
+- **Right to Erasure**: "Radera mig" funktion
+- **Right to Rectification**: Uppdatera data
+- **Data Portability**: Export i maskinläsbart format
+- **Privacy by Design**: Pseudonymisering, kryptering, minimering
+- **Audit Logging**: All databehandling spåras
+- **Data Retention**: Auto-radering efter viss tid (default: 365 dagar)
+- **Anonymization**: Gamla assessments anonymiseras automatiskt
+
+### GDPR Endpoints
+
+| Endpoint | Beskrivning |
+|----------|-------------|
+| `POST /api/v1/gdpr/consent` | Ge/dra tillbaka samtycke |
+| `GET /api/v1/gdpr/consent/{user_id}` | Visa samtycken |
+| `POST /api/v1/gdpr/export` | Exportera all användardata |
+| `POST /api/v1/gdpr/delete` | Begär radering |
+| `POST /api/v1/gdpr/delete/confirm/{token}` | Bekräfta radering |
+| `GET /api/v1/gdpr/privacy-info/{user_id}` | Privacy dashboard |
+| `GET /api/v1/gdpr/audit/{user_id}` | Audit logs |
+
+Se [GDPR_GUIDE.md](GDPR_GUIDE.md) för komplett dokumentation.
 
 ---
 
@@ -103,15 +157,23 @@ const { assessment_id, questions } = await response.json();
 
 ```
 chatbot/
-├── api_main.py                 # FastAPI Assessment API ⭐
-├── test_api.py                 # Test script för API
+├── api_main_gdpr.py            # GDPR-Compliant API ⭐ REKOMMENDERAD
+├── api_main.py                 # Basic API (no database)
+├── api_gdpr.py                 # GDPR endpoints module
+├── database.py                 # SQLAlchemy models + GDPR functions
+├── test_gdpr_api.py            # Test script för GDPR API ⭐
+├── test_api.py                 # Test script för basic API
 ├── streamlit_app.py            # Streamlit chatbot
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Environment variables template
+├── GDPR_GUIDE.md               # GDPR compliance guide 🔒
 ├── ASSESSMENT_README.md        # Detaljerad API dokumentation
 ├── LOVABLE_INTEGRATION.md      # Guide för Lovable integration
 └── README.md                   # Denna fil
 ```
+
+**Databas (skapas automatiskt):**
+- `assessment_gdpr.db` - SQLite databas med all användardata
 
 ---
 
