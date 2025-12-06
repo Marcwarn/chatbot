@@ -1,2 +1,10 @@
 streamlit
 openai
+fastapi
+uvicorn[standard]
+pydantic
+sqlalchemy
+python-dotenv
+anthropic
+httpx
+python-multipart
