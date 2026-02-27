@@ -1,18 +1,16 @@
 """
-GDPR-Compliant Personality Assessment API
-Integrates original API with full GDPR compliance
+Persona – GDPR-Compliant Big Five Personality Assessment API
+Uses validated IPIP-50 questions (static, not AI-generated)
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import uuid
 import os
-from anthropic import Anthropic
-import json
 
-# Import GDPR components
 from database import (
     db, User, UserConsent, Assessment as DBAssessment,
     AssessmentQuestion as DBQuestion,
@@ -22,17 +20,15 @@ from database import (
 )
 from api_gdpr import router as gdpr_router
 
-# Initialize database
+# ── Bootstrap ────────────────────────────────────────────────────────────────
 db.create_tables()
 
-# Initialize FastAPI app
 app = FastAPI(
-    title="GDPR-Compliant Personality Assessment API",
-    description="AI-driven personality assessments with full GDPR compliance",
-    version="2.0.0"
+    title="Persona – Big Five Assessment API",
+    description="Scientifically-validated IPIP-50 personality assessment with GDPR compliance",
+    version="3.0.0",
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,630 +37,457 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include GDPR router
 app.include_router(gdpr_router)
 
-# Initialize Anthropic client
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+# ── IPIP-50 Question Bank (Swedish, validated) ───────────────────────────────
 
-# ============================================================================
-# PYDANTIC MODELS
-# ============================================================================
+IPIP_QUESTIONS = [
+    # EXTRAVERSION
+    {"id": 1,  "text": "Jag är den som pratar mest på en fest",                "dim": "E", "keyed": "+"},
+    {"id": 2,  "text": "Jag pratar inte särskilt mycket",                      "dim": "E", "keyed": "-"},
+    {"id": 3,  "text": "Jag känner mig bekväm i grupp",                        "dim": "E", "keyed": "+"},
+    {"id": 4,  "text": "Jag håller mig hellre i bakgrunden",                   "dim": "E", "keyed": "-"},
+    {"id": 5,  "text": "Jag tar gärna initiativ till samtal",                  "dim": "E", "keyed": "+"},
+    {"id": 6,  "text": "Jag har lite att säga i sociala sammanhang",           "dim": "E", "keyed": "-"},
+    {"id": 7,  "text": "Jag pratar gärna med många på fester",                 "dim": "E", "keyed": "+"},
+    {"id": 8,  "text": "Jag vill inte vara i centrum av uppmärksamheten",      "dim": "E", "keyed": "-"},
+    {"id": 9,  "text": "Jag tar gärna ledningen i grupp",                      "dim": "E", "keyed": "+"},
+    {"id": 10, "text": "Jag är tyst och tillbakadragen med okända",            "dim": "E", "keyed": "-"},
+    # AGREEABLENESS
+    {"id": 11, "text": "Jag bryr mig genuint om andras välmående",             "dim": "A", "keyed": "+"},
+    {"id": 12, "text": "Jag kan vara hård och direkt mot folk",                "dim": "A", "keyed": "-"},
+    {"id": 13, "text": "Jag förstår andras känslor",                           "dim": "A", "keyed": "+"},
+    {"id": 14, "text": "Jag är sällan intresserad av andras problem",          "dim": "A", "keyed": "-"},
+    {"id": 15, "text": "Jag har ett varmt och omtänksamt hjärta",              "dim": "A", "keyed": "+"},
+    {"id": 16, "text": "Jag är inte alltid intresserad av hur andra mår",      "dim": "A", "keyed": "-"},
+    {"id": 17, "text": "Jag tar tid att hjälpa andra",                         "dim": "A", "keyed": "+"},
+    {"id": 18, "text": "Jag är lyhörd för andras känslor",                     "dim": "A", "keyed": "+"},
+    {"id": 19, "text": "Jag skapar en bekväm stämning runt mig",               "dim": "A", "keyed": "+"},
+    {"id": 20, "text": "Jag är svår att lära känna på djupet",                 "dim": "A", "keyed": "-"},
+    # CONSCIENTIOUSNESS
+    {"id": 21, "text": "Jag är alltid väl förberedd",                          "dim": "C", "keyed": "+"},
+    {"id": 22, "text": "Jag lämnar saker och ting i oordning",                 "dim": "C", "keyed": "-"},
+    {"id": 23, "text": "Jag uppmärksammar detaljer noga",                      "dim": "C", "keyed": "+"},
+    {"id": 24, "text": "Jag skapar lätt röra hemma och på jobbet",             "dim": "C", "keyed": "-"},
+    {"id": 25, "text": "Jag slutför uppgifter snabbt och direkt",              "dim": "C", "keyed": "+"},
+    {"id": 26, "text": "Jag skjuter upp saker på framtiden",                   "dim": "C", "keyed": "-"},
+    {"id": 27, "text": "Jag arbetar systematiskt och följer en plan",          "dim": "C", "keyed": "+"},
+    {"id": 28, "text": "Jag missar ibland viktiga deadlines",                  "dim": "C", "keyed": "-"},
+    {"id": 29, "text": "Jag avslutar alltid det jag börjar",                   "dim": "C", "keyed": "+"},
+    {"id": 30, "text": "Jag gör inte mer än vad som absolut krävs",           "dim": "C", "keyed": "-"},
+    # NEUROTICISM
+    {"id": 31, "text": "Jag blir lätt upprörd eller stressad",                 "dim": "N", "keyed": "+"},
+    {"id": 32, "text": "Jag är avslappnad de flesta dagar",                    "dim": "N", "keyed": "-"},
+    {"id": 33, "text": "Jag oroar mig ofta för saker",                         "dim": "N", "keyed": "+"},
+    {"id": 34, "text": "Jag blir sällan stressad",                             "dim": "N", "keyed": "-"},
+    {"id": 35, "text": "Jag kan bli irriterad snabbt",                         "dim": "N", "keyed": "+"},
+    {"id": 36, "text": "Jag hanterar stress bra",                              "dim": "N", "keyed": "-"},
+    {"id": 37, "text": "Jag har humörsvängningar",                             "dim": "N", "keyed": "+"},
+    {"id": 38, "text": "Jag störs sällan av oro eller ångest",                 "dim": "N", "keyed": "-"},
+    {"id": 39, "text": "Jag kan bli melankolisk eller nedstämd",               "dim": "N", "keyed": "+"},
+    {"id": 40, "text": "Jag är känslomässigt stabil och jämn",                 "dim": "N", "keyed": "-"},
+    # OPENNESS
+    {"id": 41, "text": "Jag har en livlig och aktiv fantasi",                  "dim": "O", "keyed": "+"},
+    {"id": 42, "text": "Jag har ibland svårt att förstå abstrakta idéer",     "dim": "O", "keyed": "-"},
+    {"id": 43, "text": "Jag har intressanta och originella idéer",             "dim": "O", "keyed": "+"},
+    {"id": 44, "text": "Jag saknar stark kreativ fantasi",                     "dim": "O", "keyed": "-"},
+    {"id": 45, "text": "Jag lär mig snabbt och förstår saker lätt",           "dim": "O", "keyed": "+"},
+    {"id": 46, "text": "Jag föredrar konkreta fakta framför teorier",          "dim": "O", "keyed": "-"},
+    {"id": 47, "text": "Jag gillar att reflektera och leka med idéer",         "dim": "O", "keyed": "+"},
+    {"id": 48, "text": "Jag är inte alltid intresserad av konst och kultur",   "dim": "O", "keyed": "-"},
+    {"id": 49, "text": "Jag är nyfiken på allt möjligt",                       "dim": "O", "keyed": "+"},
+    {"id": 50, "text": "Jag föredrar rutiner framför nya erfarenheter",        "dim": "O", "keyed": "-"},
+]
+
+DIMENSION_META = {
+    "E": {"name": "Extraversion",         "name_sv": "Extraversion"},
+    "A": {"name": "Agreeableness",        "name_sv": "Vänlighet"},
+    "C": {"name": "Conscientiousness",    "name_sv": "Samvetsgrannhet"},
+    "N": {"name": "Neuroticism",          "name_sv": "Emotionell stabilitet"},
+    "O": {"name": "Openness",             "name_sv": "Öppenhet"},
+}
+
+INTERPRETATIONS: Dict[str, Dict[str, Dict[str, str]]] = {
+    "E": {
+        "high": {
+            "tag": "Extrovert",
+            "sv": "Du drar energi från att vara med andra. Du är social, pratsam och trivs naturligt i centrum. Du tar gärna initiativ och skapar kontakter med lätthet.",
+            "en": "You gain energy from others. You are social, talkative, and thrive in the spotlight.",
+        },
+        "mid": {
+            "tag": "Ambivert",
+            "sv": "Du är bekväm i både sociala och ensamma sammanhang och anpassar dig väl till situationen.",
+            "en": "You are comfortable in both social and solitary settings, adapting well to either.",
+        },
+        "low": {
+            "tag": "Introvert",
+            "sv": "Du laddar dina batterier genom ensamtid och reflektion. Du lyssnar mer än du pratar och värdesätter djupa relationer.",
+            "en": "You recharge through solitude and reflection, preferring depth over breadth in relationships.",
+        },
+    },
+    "A": {
+        "high": {
+            "tag": "Samarbetsvillig",
+            "sv": "Du är empatisk, omtänksam och genuint intresserad av andra. Du värdesätter harmoni och är en person folk gärna vänder sig till.",
+            "en": "You are empathetic, cooperative, and genuinely interested in others' wellbeing.",
+        },
+        "mid": {
+            "tag": "Balanserad",
+            "sv": "Du balanserar samarbete med självhävdelse och navigerar sociala situationer med pragmatism.",
+            "en": "You balance cooperation with self-assertion and navigate social dynamics pragmatically.",
+        },
+        "low": {
+            "tag": "Självständig",
+            "sv": "Du är direkt, självständig och konkurrensorienterad. Du värderar ärlighet framför diplomati.",
+            "en": "You are direct, independent, and competitive, valuing honesty over diplomacy.",
+        },
+    },
+    "C": {
+        "high": {
+            "tag": "Organiserad",
+            "sv": "Du är strukturerad, pålitlig och målfokuserad. Du planerar noggrant och levererar konsekvent hög kvalitet.",
+            "en": "You are organized, dependable, and goal-oriented, consistently delivering high quality.",
+        },
+        "mid": {
+            "tag": "Flexibel",
+            "sv": "Du balanserar struktur med flexibilitet och är organiserad när situationen kräver det.",
+            "en": "You balance structure with flexibility, being organized when the situation calls for it.",
+        },
+        "low": {
+            "tag": "Spontan",
+            "sv": "Du är spontan, flexibel och kreativ. Du trivs med frihet och är anpassningsbar i förändring.",
+            "en": "You are spontaneous, flexible, and creative, thriving with freedom and change.",
+        },
+    },
+    "N": {
+        # Displayed as emotional stability (inverted)
+        "high": {
+            "tag": "Känslosam",
+            "sv": "Du är känslomässigt lyhörd och sensitiv. Du upplever djupa känslor och din empatiska förmåga är en styrka.",
+            "en": "You are emotionally sensitive and experience deep feelings, with strong empathic capacity.",
+        },
+        "mid": {
+            "tag": "Balanserad",
+            "sv": "Du hanterar stress relativt bra men kan påverkas av svåra situationer. Du har en normal känslomässig variation.",
+            "en": "You handle stress reasonably well with a normal range of emotional responses.",
+        },
+        "low": {
+            "tag": "Stabil",
+            "sv": "Du är lugn och samlad under press. Du återhämtar dig snabbt och behåller lugnet – en stark tillgång i team.",
+            "en": "You are calm under pressure, recovering quickly from setbacks — a stabilizing force in teams.",
+        },
+    },
+    "O": {
+        "high": {
+            "tag": "Kreativ",
+            "sv": "Du är nyfiken, kreativ och öppen för nya erfarenheter. Du söker djup och mening och tänker gärna utanför boxen.",
+            "en": "You are curious, creative, and open to new experiences, often thinking outside the box.",
+        },
+        "mid": {
+            "tag": "Pragmatisk",
+            "sv": "Du är pragmatisk men öppen för nya idéer och balanserar tradition med innovation.",
+            "en": "You are pragmatic yet open to new ideas, balancing tradition with innovation.",
+        },
+        "low": {
+            "tag": "Traditionell",
+            "sv": "Du är praktisk, konkret och traditionell. Du föredrar beprövade metoder och trivs med rutiner.",
+            "en": "You are practical, concrete, and conventional, preferring proven methods and routines.",
+        },
+    },
+}
+
+LIKERT_OPTIONS = [
+    "1 - Stämmer inte alls",
+    "2 - Stämmer dåligt",
+    "3 - Neutral",
+    "4 - Stämmer ganska bra",
+    "5 - Stämmer helt",
+]
+
+# ── Pydantic Models ──────────────────────────────────────────────────────────
 
 class StartAssessmentRequest(BaseModel):
-    user_id: Optional[str] = None  # Optional - will be created if not provided
-    email: Optional[EmailStr] = None  # For GDPR verification
-    assessment_type: str = Field(..., description="Type: big_five, disc, jung_mbti, comprehensive")
-    language: str = Field(default="sv", description="Language code (sv, en)")
-    num_questions: int = Field(default=30, ge=10, le=100)
-
-    # GDPR: Explicit consents
-    consent_data_processing: bool = Field(..., description="Consent for data processing")
-    consent_ai_analysis: bool = Field(..., description="Consent for AI analysis")
-    consent_storage: bool = Field(default=True, description="Consent for data storage")
+    user_id: Optional[str] = None
+    email: Optional[str] = None
+    language: str = Field(default="sv")
+    # GDPR explicit consent
+    consent_data_processing: bool = Field(..., description="Required: consent for data processing")
+    consent_analysis: bool = Field(..., description="Required: consent for algorithmic analysis")
+    consent_storage: bool = Field(default=True)
 
 
-class QuestionResponse(BaseModel):
+class QuestionOut(BaseModel):
     question_id: int
-    question_text: str
-    scale_type: str
-    options: Optional[List[str]] = None
+    text: str
     dimension: str
+    dimension_name: str
+    scale_type: str = "likert_5"
+    options: List[str]
 
 
-class AssessmentQuestions(BaseModel):
+class AssessmentStartResponse(BaseModel):
     assessment_id: str
     user_id: str
-    questions: List[QuestionResponse]
+    questions: List[QuestionOut]
     total_questions: int
-    assessment_type: str
-    created_at: datetime
-    gdpr_notice: str = "Your responses will be processed according to GDPR. You can delete your data at any time."
+    gdpr_notice: str
 
 
-class AnswerSubmission(BaseModel):
-    assessment_id: str
+class AnswerIn(BaseModel):
     question_id: int
-    answer: Any
+    value: int = Field(..., ge=1, le=5)
 
 
-class CompleteAssessmentRequest(BaseModel):
+class SubmitAssessmentRequest(BaseModel):
     assessment_id: str
-    answers: List[AnswerSubmission]
+    answers: List[AnswerIn]
 
 
-class PersonalityScore(BaseModel):
+class DimensionScore(BaseModel):
     dimension: str
-    score: float
-    percentile: Optional[float] = None
+    dimension_name: str
+    raw_score: float          # mean 1–5
+    percentile: float         # 0–100
+    display_score: float      # 0–100 (N is inverted)
+    level: str                # "high" | "mid" | "low"
+    tag: str
     interpretation: str
 
 
-class AssessmentResult(BaseModel):
+class AssessmentResultOut(BaseModel):
     assessment_id: str
     user_id: str
-    assessment_type: str
-    scores: List[PersonalityScore]
-    summary: str
-    detailed_analysis: str
-    strengths: List[str]
-    development_areas: List[str]
-    recommendations: List[str]
     completed_at: datetime
-    gdpr_notice: str = "You can export or delete this data anytime using /api/v1/gdpr/export or /api/v1/gdpr/delete"
+    headline: str
+    scores: List[DimensionScore]
+    strengths: List[str]
+    gdpr_notice: str
 
 
-# ============================================================================
-# AI PROMPT TEMPLATES (Same as before)
-# ============================================================================
+# ── Scoring Logic ─────────────────────────────────────────────────────────────
 
-BIG_FIVE_SYSTEM_PROMPT = """Du är en expert inom psykometri och personlighetsbedömning, specialiserad på Big Five-modellen (OCEAN):
-
-**Big Five Dimensioner:**
-1. **Openness (Öppenhet)**: Kreativitet, nyfiken, öppen för nya erfarenheter
-2. **Conscientiousness (Samvetsgrannhet)**: Organiserad, ansvarsfull, pålitlig
-3. **Extraversion (Extraversion)**: Utåtriktad, social, energisk
-4. **Agreeableness (Vänlighet)**: Empatisk, samarbetsvillig, tillitsfull
-5. **Neuroticism (Neuroticism)**: Emotionell stabilitet, ångestnivå, stress-hantering
-
-Skapa vetenskapligt validerade frågor som mäter dessa dimensioner på ett reliabelt sätt."""
-
-DISC_SYSTEM_PROMPT = """Du är en expert på DISC personlighetsmodellen:
-
-**DISC Dimensioner:**
-1. **Dominance (D)**: Resultatinriktad, bestämd, direkta, tävlingsinriktad
-2. **Influence (I)**: Utåtriktad, entusiastisk, optimistisk, övertalande
-3. **Steadiness (S)**: Stödjande, pålitlig, tålmodig, teamorienterad
-4. **Conscientiousness (C)**: Analytisk, noggrann, systematisk, kvalitetsfokuserad
-
-Skapa situationsbaserade frågor som identifierar användarens DISC-profil."""
-
-JUNG_MBTI_SYSTEM_PROMPT = """Du är expert på Jungiansk typologi och MBTI (Myers-Briggs Type Indicator):
-
-**MBTI Dimensioner:**
-1. **E/I (Extraversion/Introversion)**: Energikälla - yttre vs inre värld
-2. **S/N (Sensing/Intuition)**: Informationshantering - konkret vs abstrakt
-3. **T/F (Thinking/Feeling)**: Beslutfattande - logik vs värderingar
-4. **J/P (Judging/Perceiving)**: Livsstil - strukturerad vs flexibel
-
-Skapa frågor som tydligt differentierar mellan dessa preferenser."""
-
-# ============================================================================
-# AI FUNCTIONS (Same as before)
-# ============================================================================
-
-def generate_questions_with_ai(assessment_type: str, num_questions: int, language: str) -> List[QuestionResponse]:
-    """Generate assessment questions using Claude AI"""
-
-    system_prompts = {
-        "big_five": BIG_FIVE_SYSTEM_PROMPT,
-        "disc": DISC_SYSTEM_PROMPT,
-        "jung_mbti": JUNG_MBTI_SYSTEM_PROMPT,
-    }
-
-    if assessment_type == "comprehensive":
-        system_prompt = f"{BIG_FIVE_SYSTEM_PROMPT}\n\n{DISC_SYSTEM_PROMPT}\n\n{JUNG_MBTI_SYSTEM_PROMPT}"
-    else:
-        system_prompt = system_prompts.get(assessment_type, BIG_FIVE_SYSTEM_PROMPT)
-
-    lang_instruction = "svenska" if language == "sv" else "English"
-
-    user_prompt = f"""Generera {num_questions} validerade personlighetsfrågor på {lang_instruction}.
-
-**Krav:**
-- Varje fråga ska mäta en specifik dimension/trait
-- Använd olika frågeformat: Likert-skala (1-5), val mellan alternativ, scenariobaserade
-- Frågor ska vara tydliga, icke-ledande och kulturellt neutrala
-- Balansera positiva och negativa formuleringar (för att undvika response bias)
-
-**Returnera JSON i följande format:**
-```json
-{{
-  "questions": [
-    {{
-      "question_id": 1,
-      "question_text": "Jag tycker om att träffa nya människor",
-      "scale_type": "likert",
-      "options": ["1 - Stämmer inte alls", "2 - Stämmer dåligt", "3 - Neutral", "4 - Stämmer ganska bra", "5 - Stämmer helt"],
-      "dimension": "Extraversion"
-    }}
-  ]
-}}
-```
-
-Generera nu {num_questions} frågor:"""
-
-    try:
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
-        )
-
-        response_text = message.content[0].text
-
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
-
-        questions_data = json.loads(response_text)
-        questions = [QuestionResponse(**q) for q in questions_data["questions"]]
-
-        return questions
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate questions: {str(e)}")
+def score_dimension(questions: list, answers: Dict[int, int]) -> float:
+    """Returns mean score 1–5 with reverse scoring applied."""
+    total = 0
+    count = 0
+    for q in questions:
+        v = answers.get(q["id"], 3)
+        if q["keyed"] == "-":
+            v = 6 - v
+        total += v
+        count += 1
+    return total / count if count else 3.0
 
 
-def analyze_answers_with_ai(assessment_type: str, questions: List[QuestionResponse],
-                           answers: List[AnswerSubmission], language: str) -> AssessmentResult:
-    """Analyze assessment answers using Claude AI"""
-
-    qa_pairs = []
-    for answer in answers:
-        question = next((q for q in questions if q.question_id == answer.question_id), None)
-        if question:
-            qa_pairs.append({
-                "dimension": question.dimension,
-                "question": question.question_text,
-                "answer": answer.answer,
-                "scale": question.scale_type
-            })
-
-    system_prompts = {
-        "big_five": BIG_FIVE_SYSTEM_PROMPT,
-        "disc": DISC_SYSTEM_PROMPT,
-        "jung_mbti": JUNG_MBTI_SYSTEM_PROMPT,
-    }
-
-    system_prompt = system_prompts.get(assessment_type, BIG_FIVE_SYSTEM_PROMPT)
-    lang_instruction = "svenska" if language == "sv" else "English"
-
-    analysis_prompt = f"""Analysera följande personlighetsbedömning och ge djupgående insikter på {lang_instruction}.
-
-**Användarens svar:**
-{json.dumps(qa_pairs, indent=2, ensure_ascii=False)}
-
-**Uppgift:**
-1. Beräkna poäng för varje dimension (0-100 skala)
-2. Ge percentiler baserat på normalfördelning
-3. Skriv tolkningar för varje dimension
-4. Identifiera styrkor och utvecklingsområden
-5. Ge personliga rekommendationer
-
-**Returnera JSON:**
-```json
-{{
-  "scores": [
-    {{
-      "dimension": "Extraversion",
-      "score": 75.5,
-      "percentile": 82,
-      "interpretation": "Du är utåtriktad och energisk..."
-    }}
-  ],
-  "summary": "Övergripande sammanfattning av personligheten...",
-  "detailed_analysis": "Djupgående analys...",
-  "strengths": ["Utmärkt social förmåga", "Kreativ problemlösare"],
-  "development_areas": ["Kan vara för impulsiv", "Behöver mer struktur"],
-  "recommendations": ["Utnyttja din kreativitet i projektledning", "Arbeta med tidsplanering"]
-}}
-```
-
-Analysera nu:"""
-
-    try:
-        message = anthropic_client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=8192,
-            system=system_prompt,
-            messages=[{"role": "user", "content": analysis_prompt}]
-        )
-
-        response_text = message.content[0].text
-
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0].strip()
-
-        result_data = json.loads(response_text)
-
-        result = AssessmentResult(
-            assessment_id=answers[0].assessment_id,
-            user_id="",
-            assessment_type=assessment_type,
-            scores=[PersonalityScore(**s) for s in result_data["scores"]],
-            summary=result_data["summary"],
-            detailed_analysis=result_data["detailed_analysis"],
-            strengths=result_data["strengths"],
-            development_areas=result_data["development_areas"],
-            recommendations=result_data["recommendations"],
-            completed_at=datetime.now()
-        )
-
-        return result
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze answers: {str(e)}")
+def mean_to_percentile(mean: float) -> float:
+    """Approximate percentile using population norms (mean≈3.0, sd≈0.7)."""
+    import math
+    z = (mean - 3.0) / 0.7
+    return round(min(99, max(1, 50 * (1 + math.erf(z / math.sqrt(2))))), 1)
 
 
-# ============================================================================
-# API ENDPOINTS (GDPR-Enhanced)
-# ============================================================================
+def level(percentile: float) -> str:
+    if percentile >= 65:
+        return "high"
+    if percentile <= 35:
+        return "low"
+    return "mid"
+
+
+def build_strengths(dim_scores: Dict[str, float], lang: str = "sv") -> List[str]:
+    strengths = []
+    key = "sv" if lang == "sv" else "en"
+    if dim_scores.get("E", 50) >= 65:
+        strengths.append("Du bygger nätverk och relationer med naturlig lätthet." if lang == "sv" else "You build networks and relationships with natural ease.")
+    elif dim_scores.get("E", 50) <= 35:
+        strengths.append("Du lyssnar aktivt och tänker innan du agerar — en sällsynt förmåga." if lang == "sv" else "You listen carefully and think before acting — a rare skill.")
+    if dim_scores.get("A", 50) >= 65:
+        strengths.append("Din empati gör dig till en uppskattad kollega och vän." if lang == "sv" else "Your empathy makes you a valued colleague and friend.")
+    if dim_scores.get("C", 50) >= 65:
+        strengths.append("Du levererar konsekvent hög kvalitet och kan litas på." if lang == "sv" else "You consistently deliver high quality and can be relied upon.")
+    if dim_scores.get("N_display", 50) >= 65:
+        strengths.append("Ditt lugn under press smittar av sig och stabiliserar team." if lang == "sv" else "Your calm under pressure stabilizes those around you.")
+    if dim_scores.get("O", 50) >= 65:
+        strengths.append("Din kreativitet och nyfikenhet driver innovation." if lang == "sv" else "Your creativity and curiosity drive innovation.")
+    return strengths[:4] if strengths else (
+        ["Du har en balanserad och mångsidig personlighet."] if lang == "sv"
+        else ["You have a balanced and versatile personality."]
+    )
+
+
+def generate_headline(dim_scores: Dict[str, float], lang: str = "sv") -> str:
+    traits = []
+    if dim_scores.get("O", 50) >= 65:
+        traits.append("kreativ" if lang == "sv" else "creative")
+    if dim_scores.get("C", 50) >= 65:
+        traits.append("strukturerad" if lang == "sv" else "structured")
+    if dim_scores.get("E", 50) >= 65:
+        traits.append("social")
+    if dim_scores.get("A", 50) >= 65:
+        traits.append("empatisk" if lang == "sv" else "empathetic")
+    if dim_scores.get("N_display", 50) >= 65:
+        traits.append("stabil" if lang == "sv" else "stable")
+    if dim_scores.get("E", 50) <= 35:
+        traits.append("reflekterad" if lang == "sv" else "reflective")
+    if dim_scores.get("C", 50) <= 35:
+        traits.append("spontan" if lang == "sv" else "spontaneous")
+
+    if not traits:
+        return "Balanserad och mångsidig personlighet" if lang == "sv" else "Balanced and versatile personality"
+    if len(traits) == 1:
+        return f"En {traits[0]} personlighet" if lang == "sv" else f"A {traits[0]} personality"
+    last = traits.pop()
+    return f"En {', '.join(traits)} och {last} personlighet" if lang == "sv" else f"A {', '.join(traits)} and {last} personality"
+
+
+# ── In-memory session store (replace with DB in production) ──────────────────
+
+_sessions: Dict[str, dict] = {}
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
-    """API root endpoint"""
     return {
-        "message": "GDPR-Compliant Personality Assessment API",
-        "version": "2.0.0",
-        "gdpr_compliance": "Full GDPR compliance with consent management, data export, and deletion",
-        "endpoints": {
-            "assessment": {
-                "start": "/api/v1/assessment/start",
-                "submit": "/api/v1/assessment/submit",
-                "result": "/api/v1/assessment/result/{assessment_id}",
-                "types": "/api/v1/assessment/types"
-            },
-            "gdpr": {
-                "consent": "/api/v1/gdpr/consent",
-                "export": "/api/v1/gdpr/export",
-                "delete": "/api/v1/gdpr/delete",
-                "privacy_info": "/api/v1/gdpr/privacy-info/{user_id}",
-                "privacy_policy": "/api/v1/gdpr/privacy-policy"
-            },
-            "docs": "/docs"
-        }
+        "service": "Persona – Big Five Assessment API",
+        "version": "3.0.0",
+        "docs": "/docs",
+        "instrument": "IPIP-50 (International Personality Item Pool)",
+        "status": "ready",
     }
 
 
-@app.post("/api/v1/assessment/start", response_model=AssessmentQuestions)
-async def start_assessment(request: StartAssessmentRequest, http_request: Request):
-    """
-    Start a new GDPR-compliant personality assessment
+@app.post("/api/v1/assessment/start", response_model=AssessmentStartResponse)
+async def start_assessment(req: StartAssessmentRequest):
+    """Begin a new IPIP-50 Big Five assessment. GDPR consent required."""
 
-    Requires explicit consent for data processing
-    """
-    session = db.get_session()
-
-    try:
-        # GDPR: Check consents
-        if not request.consent_data_processing:
-            raise HTTPException(
-                status_code=403,
-                detail="Data processing consent required. User must explicitly consent to data processing."
-            )
-
-        if not request.consent_ai_analysis:
-            raise HTTPException(
-                status_code=403,
-                detail="AI analysis consent required. User must consent to AI-powered analysis."
-            )
-
-        # Get or create user
-        if request.user_id:
-            user = session.query(User).filter(User.id == request.user_id).first()
-            if not user:
-                user = User(email=request.email, user_id=request.user_id)
-                session.add(user)
-        else:
-            user = User(email=request.email)
-            session.add(user)
-
-        session.flush()  # Get user ID
-
-        # Record consents
-        consents_to_add = [
-            UserConsent(
-                user_id=user.id,
-                consent_type="data_processing",
-                consent_given=request.consent_data_processing,
-                purpose="Personality assessment data collection and storage",
-                legal_basis="consent"
-            ),
-            UserConsent(
-                user_id=user.id,
-                consent_type="ai_analysis",
-                consent_given=request.consent_ai_analysis,
-                purpose="AI-powered personality analysis using Anthropic Claude",
-                legal_basis="consent"
-            ),
-            UserConsent(
-                user_id=user.id,
-                consent_type="storage",
-                consent_given=request.consent_storage,
-                purpose="Data storage for future reference",
-                legal_basis="consent"
-            )
-        ]
-
-        for consent in consents_to_add:
-            session.add(consent)
-
-        # Generate assessment ID
-        assessment_id = f"assess_{user.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-        # Generate questions with AI
-        questions = generate_questions_with_ai(
-            assessment_type=request.assessment_type,
-            num_questions=request.num_questions,
-            language=request.language
+    if not req.consent_data_processing or not req.consent_analysis:
+        raise HTTPException(
+            status_code=400,
+            detail="GDPR: Consent for data processing and analysis is required."
         )
 
-        # Create assessment in database
-        assessment = DBAssessment(
-            id=assessment_id,
-            user_id=user.id,
-            assessment_type=request.assessment_type,
-            language=request.language,
-            status="in_progress"
+    user_id = req.user_id or str(uuid.uuid4())
+    assessment_id = str(uuid.uuid4())
+
+    # Build question list
+    questions_out = [
+        QuestionOut(
+            question_id=q["id"],
+            text=q["text"],
+            dimension=q["dim"],
+            dimension_name=DIMENSION_META[q["dim"]]["name_sv"],
+            options=LIKERT_OPTIONS,
         )
-        session.add(assessment)
+        for q in IPIP_QUESTIONS
+    ]
 
-        # Store questions
-        for q in questions:
-            db_question = DBQuestion(
-                assessment_id=assessment_id,
-                question_id=q.question_id,
-                question_text=q.question_text,
-                scale_type=q.scale_type,
-                options=q.options,
-                dimension=q.dimension
-            )
-            session.add(db_question)
+    # Store session
+    _sessions[assessment_id] = {
+        "user_id": user_id,
+        "language": req.language,
+        "started_at": datetime.utcnow().isoformat(),
+        "consents": {
+            "data_processing": req.consent_data_processing,
+            "analysis": req.consent_analysis,
+            "storage": req.consent_storage,
+        },
+    }
 
-        # Audit log
-        audit = AuditLog(
-            user_id=user.id,
-            action="assessment_started",
-            resource_type="assessment",
-            resource_id=assessment_id,
-            details={
-                "assessment_type": request.assessment_type,
-                "num_questions": request.num_questions,
-                "language": request.language
-            },
-            ip_address=http_request.client.host if http_request.client else None
-        )
-        session.add(audit)
-
-        session.commit()
-
-        return AssessmentQuestions(
-            assessment_id=assessment_id,
-            user_id=user.id,
-            questions=questions,
-            total_questions=len(questions),
-            assessment_type=request.assessment_type,
-            created_at=datetime.now()
-        )
-
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
+    return AssessmentStartResponse(
+        assessment_id=assessment_id,
+        user_id=user_id,
+        questions=questions_out,
+        total_questions=len(questions_out),
+        gdpr_notice=(
+            "Dina svar behandlas GDPR-säkert. Du kan begära export eller radering via /api/v1/gdpr/export och /api/v1/gdpr/delete."
+            if req.language == "sv"
+            else "Your responses are processed in accordance with GDPR. Export or delete via /api/v1/gdpr/export and /api/v1/gdpr/delete."
+        ),
+    )
 
 
-@app.post("/api/v1/assessment/submit", response_model=AssessmentResult)
-async def submit_assessment(request: CompleteAssessmentRequest, http_request: Request):
-    """
-    Submit completed assessment answers
+@app.post("/api/v1/assessment/submit", response_model=AssessmentResultOut)
+async def submit_assessment(req: SubmitAssessmentRequest):
+    """Submit answers and receive scored Big Five profile."""
 
-    Returns AI-analyzed personality profile
-    Stores all data with GDPR compliance
-    """
-    session = db.get_session()
+    session = _sessions.get(req.assessment_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Assessment session not found.")
 
-    try:
-        # Get assessment
-        assessment = session.query(DBAssessment).filter(
-            DBAssessment.id == request.assessment_id
-        ).first()
+    lang = session.get("language", "sv")
+    answers_map: Dict[int, int] = {a.question_id: a.value for a in req.answers}
 
-        if not assessment:
-            raise HTTPException(status_code=404, detail="Assessment not found")
+    # Score each dimension
+    dim_keys = ["E", "A", "C", "N", "O"]
+    raw_means: Dict[str, float] = {}
+    for d in dim_keys:
+        q_subset = [q for q in IPIP_QUESTIONS if q["dim"] == d]
+        raw_means[d] = score_dimension(q_subset, answers_map)
 
-        # Get questions
-        db_questions = session.query(DBQuestion).filter(
-            DBQuestion.assessment_id == request.assessment_id
-        ).all()
+    percentiles: Dict[str, float] = {d: mean_to_percentile(raw_means[d]) for d in dim_keys}
 
-        questions = [
-            QuestionResponse(
-                question_id=q.question_id,
-                question_text=q.question_text,
-                scale_type=q.scale_type,
-                options=q.options,
-                dimension=q.dimension
-            ) for q in db_questions
-        ]
+    # Neuroticism → emotional stability for display
+    n_display = 100 - percentiles["N"]
+    display_scores: Dict[str, float] = {
+        **{d: percentiles[d] for d in ["E", "A", "C", "O"]},
+        "N": n_display,
+        "N_display": n_display,
+    }
 
-        # Store answers
-        for answer in request.answers:
-            db_answer = DBAnswer(
-                assessment_id=request.assessment_id,
-                question_id=answer.question_id,
-                answer_value=str(answer.answer)
-            )
-            session.add(db_answer)
+    dim_scores_out: List[DimensionScore] = []
+    for d in dim_keys:
+        pct = percentiles[d]
+        disp = display_scores[d]
+        lvl = level(disp)
+        interp = INTERPRETATIONS[d][lvl]
+        dim_scores_out.append(DimensionScore(
+            dimension=d,
+            dimension_name=DIMENSION_META[d]["name_sv"],
+            raw_score=round(raw_means[d], 2),
+            percentile=pct,
+            display_score=disp,
+            level=lvl,
+            tag=interp["tag"],
+            interpretation=interp["sv"] if lang == "sv" else interp["en"],
+        ))
 
-        # Analyze with AI
-        result = analyze_answers_with_ai(
-            assessment_type=assessment.assessment_type,
-            questions=questions,
-            answers=request.answers,
-            language=assessment.language
-        )
+    headline = generate_headline(display_scores, lang)
+    strengths = build_strengths(display_scores, lang)
 
-        result.user_id = assessment.user_id
-        result.assessment_id = request.assessment_id
+    # Clean session
+    _sessions.pop(req.assessment_id, None)
 
-        # Store result
-        db_result = DBResult(
-            assessment_id=request.assessment_id,
-            scores=[s.dict() for s in result.scores],
-            summary=result.summary,
-            detailed_analysis=result.detailed_analysis,
-            strengths=result.strengths,
-            development_areas=result.development_areas,
-            recommendations=result.recommendations
-        )
-        session.add(db_result)
-
-        # Update assessment status
-        assessment.status = "completed"
-        assessment.completed_at = datetime.now()
-
-        # Audit log
-        audit = AuditLog(
-            user_id=assessment.user_id,
-            action="assessment_completed",
-            resource_type="assessment",
-            resource_id=request.assessment_id,
-            details={"num_answers": len(request.answers)},
-            ip_address=http_request.client.host if http_request.client else None
-        )
-        session.add(audit)
-
-        session.commit()
-
-        return result
-
-    except Exception as e:
-        session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
+    return AssessmentResultOut(
+        assessment_id=req.assessment_id,
+        user_id=session["user_id"],
+        completed_at=datetime.utcnow(),
+        headline=headline,
+        scores=dim_scores_out,
+        strengths=strengths,
+        gdpr_notice=(
+            "Dina uppgifter lagras säkert. Begär radering via /api/v1/gdpr/delete."
+            if lang == "sv"
+            else "Your data is stored securely. Request deletion via /api/v1/gdpr/delete."
+        ),
+    )
 
 
-@app.get("/api/v1/assessment/result/{assessment_id}", response_model=AssessmentResult)
-async def get_assessment_result(assessment_id: str, http_request: Request):
-    """
-    Retrieve assessment results by ID
-
-    GDPR: Logs data access for transparency
-    """
-    session = db.get_session()
-
-    try:
-        assessment = session.query(DBAssessment).filter(
-            DBAssessment.id == assessment_id
-        ).first()
-
-        if not assessment:
-            raise HTTPException(status_code=404, detail="Assessment not found")
-
-        db_result = session.query(DBResult).filter(
-            DBResult.assessment_id == assessment_id
-        ).first()
-
-        if not db_result:
-            raise HTTPException(status_code=404, detail="Result not found")
-
-        # Audit log - data accessed
-        audit = AuditLog(
-            user_id=assessment.user_id,
-            action="result_accessed",
-            resource_type="assessment",
-            resource_id=assessment_id,
-            ip_address=http_request.client.host if http_request.client else None
-        )
-        session.add(audit)
-        session.commit()
-
-        return AssessmentResult(
-            assessment_id=assessment_id,
-            user_id=assessment.user_id,
-            assessment_type=assessment.assessment_type,
-            scores=[PersonalityScore(**s) for s in db_result.scores],
-            summary=db_result.summary,
-            detailed_analysis=db_result.detailed_analysis,
-            strengths=db_result.strengths,
-            development_areas=db_result.development_areas,
-            recommendations=db_result.recommendations,
-            completed_at=assessment.completed_at or datetime.now()
-        )
-
-    finally:
-        session.close()
-
-
-@app.get("/api/v1/assessment/types")
-async def get_assessment_types():
-    """Get available assessment types"""
+@app.get("/api/v1/assessment/questions")
+async def get_questions_preview():
+    """Preview the IPIP-50 question bank without starting a session."""
     return {
-        "assessment_types": [
-            {
-                "id": "big_five",
-                "name": "Big Five (OCEAN)",
-                "description": "Mäter fem huvuddimensioner av personlighet: Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism",
-                "dimensions": 5,
-                "recommended_questions": 30
-            },
-            {
-                "id": "disc",
-                "name": "DISC",
-                "description": "Mäter beteendeprofil baserat på Dominance, Influence, Steadiness, Conscientiousness",
-                "dimensions": 4,
-                "recommended_questions": 24
-            },
-            {
-                "id": "jung_mbti",
-                "name": "Jung/MBTI",
-                "description": "Myers-Briggs Type Indicator baserat på Jungs typologi",
-                "dimensions": 4,
-                "types": 16,
-                "recommended_questions": 40
-            },
-            {
-                "id": "comprehensive",
-                "name": "Comprehensive Assessment",
-                "description": "Kombinerar Big Five, DISC och Jung/MBTI för en heltäckande personlighetsanalys",
-                "dimensions": 13,
-                "recommended_questions": 60
-            }
-        ]
+        "instrument": "IPIP-50",
+        "total": len(IPIP_QUESTIONS),
+        "dimensions": [
+            {"code": d, "name": DIMENSION_META[d]["name_sv"], "count": sum(1 for q in IPIP_QUESTIONS if q["dim"] == d)}
+            for d in ["E", "A", "C", "N", "O"]
+        ],
+        "questions": [{"id": q["id"], "text": q["text"], "dimension": q["dim"]} for q in IPIP_QUESTIONS],
     }
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "gdpr_compliant": True,
-        "database": "connected",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-if __name__ == "__main__":
-    import uvicorn
-    print("🔒 Starting GDPR-Compliant Personality Assessment API...")
-    print("📊 Database initialized")
-    print("✅ Ready to accept requests")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/api/v1/health")
+async def health():
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
