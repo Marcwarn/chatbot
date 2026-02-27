@@ -10,6 +10,8 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
 import os
+import json
+from anthropic import Anthropic
 
 from database import (
     db, User, UserConsent, Assessment as DBAssessment,
@@ -38,6 +40,15 @@ app.add_middleware(
 )
 
 app.include_router(gdpr_router)
+
+# ── Anthropic AI Client ──────────────────────────────────────────────────────
+anthropic_client = None
+try:
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if api_key:
+        anthropic_client = Anthropic(api_key=api_key)
+except Exception:
+    pass  # AI reports optional if no API key
 
 # ── IPIP-50 Question Bank (Swedish, validated) ───────────────────────────────
 
@@ -254,6 +265,16 @@ class DimensionScore(BaseModel):
     interpretation: str
 
 
+class PersonalizedReport(BaseModel):
+    """AI-generated personalized insights based on unique trait combination"""
+    profile_overview: str
+    work_style: str
+    communication_style: str
+    career_suggestions: List[str]
+    relationship_insights: str
+    development_areas: List[str]
+
+
 class AssessmentResultOut(BaseModel):
     assessment_id: str
     user_id: str
@@ -261,6 +282,7 @@ class AssessmentResultOut(BaseModel):
     headline: str
     scores: List[DimensionScore]
     strengths: List[str]
+    personalized_report: Optional[PersonalizedReport] = None  # AI-generated if API key available
     gdpr_notice: str
 
 
@@ -338,6 +360,100 @@ def generate_headline(dim_scores: Dict[str, float], lang: str = "sv") -> str:
         return f"En {traits[0]} personlighet" if lang == "sv" else f"A {traits[0]} personality"
     last = traits.pop()
     return f"En {', '.join(traits)} och {last} personlighet" if lang == "sv" else f"A {', '.join(traits)} and {last} personality"
+
+
+def generate_personalized_report(
+    dim_scores: Dict[str, float],
+    percentiles: Dict[str, float],
+    lang: str = "sv"
+) -> Optional[PersonalizedReport]:
+    """
+    Generate deeply personalized insights using Claude AI.
+    Analyzes trait combinations for nuanced, individual-specific content.
+    """
+    if not anthropic_client:
+        return None  # No API key - skip AI report
+
+    # Build profile summary for AI
+    profile_data = {
+        "Extraversion": percentiles["E"],
+        "Agreeableness": percentiles["A"],
+        "Conscientiousness": percentiles["C"],
+        "Emotional_Stability": 100 - percentiles["N"],  # Inverted N
+        "Openness": percentiles["O"],
+    }
+
+    is_swedish = lang == "sv"
+    lang_name = "svenska" if is_swedish else "English"
+
+    prompt = f"""Du är en expert på personlighetspsykologi och Big Five-modellen (OCEAN). Du ska skapa en djupt personaliserad rapport baserad på följande Big Five-profil (percentiler 0-100, där 50 är median):
+
+**Profil:**
+- Extraversion: {profile_data['Extraversion']:.1f}
+- Vänlighet (Agreeableness): {profile_data['Agreeableness']:.1f}
+- Samvetsgrannhet (Conscientiousness): {profile_data['Conscientiousness']:.1f}
+- Emotionell stabilitet (inverted Neuroticism): {profile_data['Emotional_Stability']:.1f}
+- Öppenhet (Openness): {profile_data['Openness']:.1f}
+
+**Uppgift:** Skriv en personlig, nyanserad rapport på {lang_name} som analyserar KOMBINATIONEN av dessa drag (inte bara varje dimension isolerat). Fokusera på hur dragkombinationerna samverkar i praktiken.
+
+**Format (returnera som JSON):**
+```json
+{{
+  "profile_overview": "2-3 meningar som fångar personens unika kombination av drag och hur de samverkar. Börja med 'Din personlighet kännetecknas av...'",
+
+  "work_style": "2-3 meningar om hur personen arbetar optimalt. Inkludera: miljöpreferenser, beslutsfattande, projektarbete vs självständigt, deadline-hantering. Konkret och applicerbar.",
+
+  "communication_style": "2-3 meningar om kommunikationsstil. Inkludera: lyssnar vs talar, direkt vs diplomatisk, gruppdiskussioner vs 1-on-1, feedback-preferenser. Praktisk coaching.",
+
+  "career_suggestions": ["3-5 konkreta karriärvägar eller roller som passar profilen MYCKET väl baserat på dragkombinationen. Var specifik (inte bara 'kreativ', utan 'UX-designer' etc)"],
+
+  "relationship_insights": "2-3 meningar om relationer (vänskap, romantik, teamarbete). Vad personen söker, vad de ger, potentiella utmaningar, styrkor i relationer. Genuint insiktsfullt.",
+
+  "development_areas": ["2-3 konkreta utvecklingsområden med ACTIONABLE råd. Inte bara 'bli mer organiserad' utan 'Använd visuella planeringsverktyg som Trello för att struktura projekt utan att förlora spontanitet'"]
+}}
+```
+
+**Viktiga riktlinjer:**
+1. **Analysera INTERAKTIONER mellan drag** (t.ex. hög E + låg C är annorlunda än hög E + hög C)
+2. Var SPECIFIK och KONKRET (inga generiska råd)
+3. Skriv varmt, positivt och coachande (inte kliniskt)
+4. Fokusera på styrkor MEN nämn utvecklingsområden ärligt
+5. Använd "du"-form (inte "personen")
+6. Career suggestions ska vara 3-5 KONKRETA jobbtitlar/roller (inte vaga)
+
+Generera rapporten nu:"""
+
+    try:
+        message = anthropic_client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=2000,
+            temperature=0.7,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        response_text = message.content[0].text
+
+        # Extract JSON
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+
+        data = json.loads(response_text)
+
+        return PersonalizedReport(
+            profile_overview=data["profile_overview"],
+            work_style=data["work_style"],
+            communication_style=data["communication_style"],
+            career_suggestions=data["career_suggestions"],
+            relationship_insights=data["relationship_insights"],
+            development_areas=data["development_areas"],
+        )
+
+    except Exception as e:
+        print(f"AI report generation failed: {e}")
+        return None  # Gracefully degrade - return None if AI fails
 
 
 # ── In-memory session store (replace with DB in production) ──────────────────
@@ -456,6 +572,9 @@ async def submit_assessment(req: SubmitAssessmentRequest):
     headline = generate_headline(display_scores, lang)
     strengths = build_strengths(display_scores, lang)
 
+    # Generate AI-powered personalized report (if API key available)
+    personalized_report = generate_personalized_report(display_scores, percentiles, lang)
+
     # Clean session
     _sessions.pop(req.assessment_id, None)
 
@@ -466,6 +585,7 @@ async def submit_assessment(req: SubmitAssessmentRequest):
         headline=headline,
         scores=dim_scores_out,
         strengths=strengths,
+        personalized_report=personalized_report,  # AI-generated insights
         gdpr_notice=(
             "Dina uppgifter lagras säkert. Begär radering via /api/v1/gdpr/delete."
             if lang == "sv"

@@ -426,6 +426,9 @@ function renderResults() {
                 </ul>
             </div>
 
+            <!-- PERSONALIZED SECTIONS -->
+            ${renderPersonalizedSections(display)}
+
             <!-- Scientific note -->
             <div class="bg-white rounded-3xl p-5 shadow-md">
                 <div class="flex items-start gap-3">
@@ -449,6 +452,249 @@ function renderResults() {
             </button>
         </div>
     </div>`;
+}
+
+// ─────────────────────────────────────────────
+// PERSONALIZED REPORT GENERATORS
+// ─────────────────────────────────────────────
+
+function getProfileOverview(d) {
+    // Analyze trait combinations for nuanced overview
+    let text = "Din personlighet kännetecknas av ";
+    const traits = [];
+
+    // Combination analysis
+    if (d.E >= 60 && d.C >= 60) traits.push("en strukturerad social förmåga – du är både engagerad i människor och pålitlig i dina åtaganden");
+    else if (d.E >= 60 && d.C <= 40) traits.push("en spontan och social energi – du trivs i dynamiska miljöer där saker händer snabbt");
+    else if (d.E <= 40 && d.C >= 60) traits.push("en fokuserad och eftertänksam approach – du arbetar djupt och systematiskt");
+    else if (d.E <= 40 && d.C <= 40) traits.push("en flexibel och reflekterande stil – du tänker innan du agerar och värdesätter frihet");
+
+    if (d.O >= 60 && d.A >= 60) traits.push("kreativ empati – du förstår människor och ser nya möjligheter");
+    else if (d.O >= 60 && d.A <= 40) traits.push("intellektuell självständighet – du ifrågasätter status quo och driver förändring");
+    else if (d.O <= 40 && d.A >= 60) traits.push("praktisk omtanke – du hjälper andra med konkreta, beprövade lösningar");
+
+    if (d.N >= 60) traits.push("känslomässig djup och lyhördhet som ger stark empati");
+    else if (d.N <= 40) traits.push("lugn stabilitet som skapar trygghet för andra");
+
+    return text + (traits.length > 0 ? traits.join(", ") + "." : "en balanserad kombination av drag som ger dig mångsidighet.");
+}
+
+function getWorkStyle(d) {
+    let style = [];
+
+    // Environment
+    if (d.E >= 60) style.push("Du trivs i öppna kontorsmiljöer med tätt samarbete och spontana diskussioner");
+    else style.push("Du arbetar bäst med fokustid och möjlighet till koncentrerat arbete utan avbrott");
+
+    // Structure
+    if (d.C >= 60) style.push("Du använder tydliga planer och checklistor, och levererar gärna före deadline");
+    else if (d.C <= 40) style.push("Du föredrar flexibla ramar och kan snabbt pivotera när nya möjligheter dyker upp");
+    else style.push("Du balanserar struktur med flexibilitet beroende på projektet");
+
+    // Creativity vs execution
+    if (d.O >= 60 && d.C >= 60) style.push("Du kombinerar kreativ problemlösning med förmågan att också genomföra idéerna");
+    else if (d.O >= 60) style.push("Du bidrar med nya perspektiv och innovativa lösningar på problem");
+    else if (d.C >= 60) style.push("Du är pålitlig leverantör av hög kvalitet i kärnuppgifter");
+
+    return style.join(". ") + ".";
+}
+
+function getCommunicationStyle(d) {
+    let comm = [];
+
+    // Talk vs listen
+    if (d.E >= 60 && d.A >= 60) comm.push("Du kommunicerar öppet och inkluderande, och skapar trygghet i grupper");
+    else if (d.E >= 60) comm.push("Du talar gärna och driver konversationen framåt, ofta med energi och entusiasm");
+    else if (d.A >= 60) comm.push("Du lyssnar aktivt och ger genomtänkta svar – folk känner sig hörda av dig");
+    else comm.push("Du är selektiv med dina ord och säger vad du tycker direkt utan omsvep");
+
+    // Directness
+    if (d.A <= 40) comm.push("Du är rak och tydlig i feedback, vilket uppskattas när svåra saker behöver sägas");
+    else if (d.A >= 60) comm.push("Du levererar feedback varsamt och konstruktivt för att bevara relationen");
+
+    // Format preference
+    if (d.E <= 40) comm.push("Du föredrar skriftlig kommunikation eller 1-on-1 samtal framför stora gruppmöten");
+
+    return comm.join(". ") + ".";
+}
+
+function getCareerSuggestions(d) {
+    const careers = [];
+
+    // High E + High A combinations
+    if (d.E >= 65 && d.A >= 65) {
+        careers.push("HR-specialist eller Recruiter");
+        careers.push("Säljare eller Account Manager");
+        careers.push("Event Manager eller Community Builder");
+    }
+    // High E + Low A (assertive extrovert)
+    else if (d.E >= 65 && d.A <= 35) {
+        careers.push("Säljchef eller Business Developer");
+        careers.push("Entreprenör eller Startup Founder");
+        careers.push("Förhandlare eller Litigator");
+    }
+    // High C + High O (structured creative)
+    else if (d.C >= 65 && d.O >= 65) {
+        careers.push("UX/UI Designer eller Product Manager");
+        careers.push("Arkitekt eller Ingenjör");
+        careers.push("Projektledare inom kreativa fält");
+    }
+    // High C + Low E (detail-oriented introvert)
+    else if (d.C >= 65 && d.E <= 35) {
+        careers.push("Data Analyst eller Software Developer");
+        careers.push("Revisor eller Compliance Specialist");
+        careers.push("Researcher eller Editor");
+    }
+    // High O + Low C (creative flexible)
+    else if (d.O >= 65 && d.C <= 35) {
+        careers.push("Kreativ copywriter eller Art Director");
+        careers.push("Musiker eller Konstnär");
+        careers.push("Innovation Consultant");
+    }
+    // Low E + High A (supportive introvert)
+    else if (d.E <= 35 && d.A >= 65) {
+        careers.push("Psykolog eller Terapeut");
+        careers.push("Bibliotekarie eller Researcher");
+        careers.push("Social Worker eller Vårdpersonal");
+    }
+    // Balanced profile
+    else {
+        careers.push("Projektledare eller Konsult");
+        careers.push("Teacher eller Mentor");
+        careers.push("Operations Manager");
+    }
+
+    // Add based on emotional stability
+    if (d.N <= 35) careers.push("Krishanterare eller Emergency Response");
+
+    return careers.slice(0, 5);
+}
+
+function getRelationshipInsights(d) {
+    let insights = [];
+
+    if (d.A >= 65) insights.push("I relationer är du lojal, stöttande och genuint intresserad av andra människors välmående");
+    else if (d.A <= 35) insights.push("Du värdesätter ärlighet och intellektuell stimulans framför harmonisökande i relationer");
+    else insights.push("Du balanserar närhet med självständighet i dina relationer");
+
+    if (d.E >= 65) insights.push("Du har många sociala kontakter och trivs med aktiviteter tillsammans");
+    else insights.push("Du föredrar djupa relationer med några få nära vänner framför stora sociala nätverk");
+
+    if (d.N >= 65) insights.push("Din känslomässiga lyhördhet gör dig till en empatisk partner som känner av andras behov");
+    else if (d.N <= 35) insights.push("Din känslomässiga stabilitet ger trygghet och du är en klippa när andra går igenom svårigheter");
+
+    return insights.join(". ") + ".";
+}
+
+function getDevelopmentAreas(d) {
+    const dev = [];
+
+    if (d.C <= 40) {
+        dev.push("**Struktur:** Testa digitala verktyg som Notion eller Todoist för att strukturera projekt utan att förlora din spontanitet");
+    }
+    if (d.E <= 35) {
+        dev.push("**Networking:** Boka in regelbundna 1-on-1 luncher istället för stora events – lika värdefullt för nätverkande");
+    }
+    if (d.A <= 35) {
+        dev.push("**Samarbete:** Öva på att först ställa en öppen fråga innan du ger din åsikt i gruppdiskussioner");
+    }
+    if (d.O <= 35) {
+        dev.push("**Innovation:** Avsätt 30 min/vecka till att utforska något helt nytt – en podd, artikel eller aktivitet utanför din comfort zone");
+    }
+    if (d.N >= 65) {
+        dev.push("**Stresshantering:** Bygg in dagliga rutiner som andningsövningar eller promenader för att reglera känslor");
+    }
+    if (d.C >= 70) {
+        dev.push("**Flexibilitet:** Experimentera med att medvetet lämna 20% av din tid oplanerad för spontana möjligheter");
+    }
+    if (d.E >= 70) {
+        dev.push("**Reflektion:** Boka in ensam fokustid i din kalender – det är inte slöseri utan investering i djupare tänkande");
+    }
+
+    return dev.length > 0 ? dev.slice(0, 3) : ["Du har en väl balanserad profil. Fortsätt utveckla dina befintliga styrkor!"];
+}
+
+function renderPersonalizedSections(display) {
+    const overview = getProfileOverview(display);
+    const workStyle = getWorkStyle(display);
+    const commStyle = getCommunicationStyle(display);
+    const careers = getCareerSuggestions(display);
+    const relationship = getRelationshipInsights(display);
+    const development = getDevelopmentAreas(display);
+
+    return `
+        <!-- Profile Overview -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="user-circle" class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din personlighetsprofil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${overview}</p>
+        </div>
+
+        <!-- Work Style -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="briefcase" class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din arbetsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${workStyle}</p>
+        </div>
+
+        <!-- Communication -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="message-circle" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din kommunikationsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${commStyle}</p>
+        </div>
+
+        <!-- Career Fit -->
+        <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-5 shadow-md border border-indigo-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="rocket" class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Roller som passar dig</h2>
+            </div>
+            <ul class="space-y-2">
+                ${careers.map(c => `
+                <li class="flex items-start gap-2">
+                    <span class="text-indigo-600 mt-1">→</span>
+                    <span class="text-sm text-gray-800 font-medium">${c}</span>
+                </li>`).join("")}
+            </ul>
+            <p class="text-xs text-gray-600 mt-3 italic">Baserat på din unika kombination av OCEAN-drag</p>
+        </div>
+
+        <!-- Relationships -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="heart" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Relationer & samarbete</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${relationship}</p>
+        </div>
+
+        <!-- Development -->
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-5 shadow-md border border-green-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="trending-up" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Utvecklingsområden</h2>
+            </div>
+            <div class="space-y-3">
+                ${development.map(d => {
+                    const parts = d.split(":");
+                    return `
+                    <div class="text-sm">
+                        ${parts.length > 1
+                            ? `<span class="font-bold text-gray-900">${parts[0]}:</span><span class="text-gray-700">${parts[1]}</span>`
+                            : `<span class="text-gray-700">${d}</span>`
+                        }
+                    </div>`;
+                }).join("")}
+            </div>
+        </div>
+    `;
 }
 
 // ─────────────────────────────────────────────
