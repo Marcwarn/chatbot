@@ -63,6 +63,15 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Database files
+*.db
+assessment_gdpr.db
+
+# Test scripts
+test_*.py
+nohup.out
+/tmp/
+
 # Flask stuff:
 instance/
 .webassets-cache

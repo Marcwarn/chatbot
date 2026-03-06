@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Personality Assessment - Mobile Demo</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Mobile-first custom styles */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            overscroll-behavior: none;
+            touch-action: pan-y;
+        }
+
+        .card-hover:active {
+            transform: scale(0.98);
+            transition: transform 0.1s;
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- App Container -->
+    <div id="app" class="max-w-2xl mx-auto bg-white min-h-screen"></div>
+
+    <script>
+        // ========================================================================
+        // STATE MANAGEMENT
+        // ========================================================================
+
+        let currentView = 'menu';
+        let consents = {
+            data_processing: false,
+            ai_analysis: false,
+            storage: true
+        };
+        let expandedConsent = null;
+
+        // ========================================================================
+        // VIEWS
+        // ========================================================================
+
+        function renderMenu() {
+            return `
+                <div class="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-pink-50 fade-in">
+                    <!-- Header -->
+                    <div class="bg-white border-b border-gray-200">
+                        <div class="px-4 py-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <i data-lucide="brain" class="w-6 h-6 text-white"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-900">Personlighetstest</h1>
+                                    <p class="text-sm text-gray-600">Upptäck din unika profil</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="px-4 py-6 space-y-6">
+                        <!-- Hero Card -->
+                        <div class="relative overflow-hidden">
+                            <button onclick="showConsent()" class="w-full text-left bg-gradient-to-br from-indigo-600 to-pink-600 rounded-3xl p-6 shadow-xl card-hover">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full mb-3">
+                                            <i data-lucide="play" class="w-4 h-4 text-white"></i>
+                                            <span class="text-sm font-medium text-white">Börja nu</span>
+                                        </div>
+
+                                        <h2 class="text-2xl font-bold text-white mb-2">Starta Nytt Test</h2>
+
+                                        <p class="text-white/90 leading-relaxed mb-4">
+                                            Få djupgående insikter om din personlighet med AI-drivna analyser baserade på vetenskaplig forskning.
+                                        </p>
+
+                                        <div class="flex items-center gap-4 text-white/80 text-sm">
+                                            <div class="flex items-center gap-1">
+                                                <i data-lucide="clock" class="w-4 h-4"></i>
+                                                <span>10-30 min</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <i data-lucide="trending-up" class="w-4 h-4"></i>
+                                                <span>AI-analys</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex-shrink-0 ml-4">
+                                        <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                                            <i data-lucide="play" class="w-5 h-5 text-white"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                                <div class="text-3xl font-bold text-indigo-600">3</div>
+                                <div class="text-sm text-gray-600 mt-1">Genomförda test</div>
+                            </div>
+                            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                                <div class="text-3xl font-bold text-pink-600">100%</div>
+                                <div class="text-sm text-gray-600 mt-1">GDPR-säkert</div>
+                            </div>
+                        </div>
+
+                        <!-- Action Cards -->
+                        <div class="space-y-3">
+                            <button onclick="alert('Visa historik (demo)')" class="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover text-left">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="history" class="w-6 h-6 text-indigo-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-gray-900">Mina Test</h3>
+                                        <p class="text-sm text-gray-600">Se tidigare resultat och jämför</p>
+                                    </div>
+                                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
+                                </div>
+                            </button>
+
+                            <button onclick="showPrivacy()" class="w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-100 card-hover text-left">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                        <i data-lucide="shield" class="w-6 h-6 text-green-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-gray-900">Integritet & Data</h3>
+                                        <p class="text-sm text-gray-600">Hantera dina samtycken och exportera data</p>
+                                    </div>
+                                    <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="bg-gradient-to-r from-indigo-50 to-pink-50 rounded-2xl p-5 border border-indigo-100">
+                            <h3 class="font-semibold text-gray-900 mb-3">Vad du får:</h3>
+                            <div class="space-y-2">
+                                <div class="flex items-start gap-2">
+                                    <div class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <i data-lucide="check" class="w-3 h-3 text-white"></i>
+                                    </div>
+                                    <span class="text-sm text-gray-700">Personlighetsprofil baserad på Big Five, DISC eller MBTI</span>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <div class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <i data-lucide="check" class="w-3 h-3 text-white"></i>
+                                    </div>
+                                    <span class="text-sm text-gray-700">AI-driven analys av dina svar</span>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <div class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <i data-lucide="check" class="w-3 h-3 text-white"></i>
+                                    </div>
+                                    <span class="text-sm text-gray-700">Fullständig GDPR-skyddad data</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConsent() {
+            const allRequired = consents.data_processing && consents.ai_analysis;
+
+            return `
+                <div class="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-pink-50 slide-in pb-32">
+                    <!-- Header -->
+                    <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
+                        <div class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <button onclick="showMenu()" class="p-2 -ml-2 card-hover rounded-full">
+                                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-600"></i>
+                                </button>
+                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <i data-lucide="shield" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-xl font-bold text-gray-900">Ditt Samtycke</h1>
+                                    <p class="text-sm text-gray-600">GDPR-säker datahantering</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="px-4 py-6 space-y-6">
+                        <!-- Intro -->
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                                Varför behöver vi ditt samtycke?
+                            </h2>
+                            <p class="text-gray-600 leading-relaxed">
+                                Enligt GDPR (EU:s dataskyddsförordning) behöver vi ditt <strong>explicita samtycke</strong> innan vi samlar in och behandlar dina personuppgifter.
+                            </p>
+                        </div>
+
+                        <!-- Consent Items -->
+                        ${renderConsentItem('data_processing', 'Databehandling', 'Vi samlar in och behandlar dina svar', true, 'database', 'Dina svar på frågorna samlas in och lagras säkert. Vi använder pseudonymisering vilket betyder att din data inte är direkt kopplad till din identitet.')}
+
+                        ${renderConsentItem('ai_analysis', 'AI-Analys', 'Claude AI analyserar dina svar', true, 'brain', 'Vi använder Anthropic Claude AI för att analysera dina personlighetssvar och ge dig insiktsfulla resultat. Din data skickas säkert till Anthropics servrar.')}
+
+                        ${renderConsentItem('storage', 'Lagring', 'Spara resultat för framtida referens', false, 'shield', 'Dina resultat sparas i max 365 dagar. Du kan när som helst exportera eller radera din data.')}
+                    </div>
+
+                    <!-- Bottom Actions -->
+                    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 max-w-2xl mx-auto">
+                        ${!allRequired ? `
+                            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 mb-3">
+                                Du måste acceptera obligatoriska samtycken för att fortsätta
+                            </div>
+                        ` : ''}
+
+                        <button
+                            onclick="${allRequired ? 'acceptConsent()' : ''}"
+                            class="w-full py-4 rounded-xl font-semibold text-lg ${allRequired ? 'bg-indigo-600 text-white card-hover shadow-lg' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}"
+                            ${!allRequired ? 'disabled' : ''}
+                        >
+                            ${allRequired ? 'Acceptera och fortsätt' : 'Acceptera obligatoriska samtycken'}
+                        </button>
+
+                        <button onclick="showMenu()" class="w-full py-3 text-gray-600 font-medium mt-2">
+                            Avbryt
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConsentItem(id, title, description, required, icon, details) {
+            const checked = consents[id];
+            const expanded = expandedConsent === id;
+
+            return `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <button onclick="toggleConsent('${id}')" class="w-full p-5 flex items-start gap-4 text-left card-hover">
+                        <!-- Checkbox -->
+                        <div class="flex-shrink-0 mt-1">
+                            <div class="w-6 h-6 rounded-lg border-2 flex items-center justify-center ${checked ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300'}">
+                                ${checked ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
+                            </div>
+                        </div>
+
+                        <!-- Icon -->
+                        <div class="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${checked ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}">
+                            <i data-lucide="${icon}" class="w-5 h-5"></i>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-semibold text-gray-900">${title}</h3>
+                                ${required ? '<span class="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">Obligatoriskt</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${description}</p>
+                        </div>
+                    </button>
+
+                    <button onclick="toggleExpand('${id}')" class="w-full px-5 py-3 flex items-center justify-between text-sm text-indigo-600 font-medium border-t border-gray-100 card-hover">
+                        <span>Läs mer</span>
+                        <i data-lucide="${expanded ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4"></i>
+                    </button>
+
+                    ${expanded ? `
+                        <div class="border-t border-gray-100 p-5 text-sm text-gray-600 leading-relaxed bg-gray-50">
+                            ${details}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderPrivacy() {
+            return `
+                <div class="min-h-screen bg-gradient-to-b from-green-50 via-white to-blue-50 slide-in">
+                    <div class="bg-white border-b border-gray-200">
+                        <div class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <button onclick="showMenu()" class="p-2 -ml-2 card-hover rounded-full">
+                                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-600"></i>
+                                </button>
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i data-lucide="shield" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-xl font-bold text-gray-900">Integritet & Data</h1>
+                                    <p class="text-sm text-gray-600">GDPR Dashboard</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-4 py-6 space-y-6">
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                            <h3 class="font-semibold text-gray-900 mb-4">Din Data</h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Totalt assessments:</span>
+                                    <span class="font-semibold">3</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Data raderas:</span>
+                                    <span class="font-semibold">2025-12-06</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Retention:</span>
+                                    <span class="font-semibold">365 dagar</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <button onclick="alert('Exporterar data... (demo)')" class="w-full bg-indigo-600 text-white rounded-2xl p-5 card-hover shadow-lg">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="download" class="w-5 h-5"></i>
+                                    <div class="text-left flex-1">
+                                        <div class="font-semibold">Exportera Mina Data</div>
+                                        <div class="text-sm text-white/80">Ladda ner som JSON</div>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button onclick="if(confirm('Är du säker på att du vill radera all din data?')) alert('Data raderad (demo)')" class="w-full bg-red-600 text-white rounded-2xl p-5 card-hover shadow-lg">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    <div class="text-left flex-1">
+                                        <div class="font-semibold">Radera Alla Mina Data</div>
+                                        <div class="text-sm text-white/80">Permanent borttagning</div>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========================================================================
+        // NAVIGATION
+        // ========================================================================
+
+        function showMenu() {
+            currentView = 'menu';
+            render();
+        }
+
+        function showConsent() {
+            currentView = 'consent';
+            render();
+        }
+
+        function showPrivacy() {
+            currentView = 'privacy';
+            render();
+        }
+
+        function acceptConsent() {
+            alert('Samtycke accepterat! ✅\n\nNu skulle vi gå vidare till val av assessment-typ.\n\n(Detta är en demo - backend integration kommer härnäst)');
+            showMenu();
+        }
+
+        // ========================================================================
+        // INTERACTIONS
+        // ========================================================================
+
+        function toggleConsent(id) {
+            consents[id] = !consents[id];
+            render();
+        }
+
+        function toggleExpand(id) {
+            expandedConsent = expandedConsent === id ? null : id;
+            render();
+        }
+
+        // ========================================================================
+        // RENDER
+        // ========================================================================
+
+        function render() {
+            const app = document.getElementById('app');
+
+            let html = '';
+            if (currentView === 'menu') html = renderMenu();
+            else if (currentView === 'consent') html = renderConsent();
+            else if (currentView === 'privacy') html = renderPrivacy();
+
+            app.innerHTML = html;
+
+            // Initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        // ========================================================================
+        // INIT
+        // ========================================================================
+
+        render();
+    </script>
+</body>
+</html>

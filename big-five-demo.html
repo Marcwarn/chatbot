@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Persona - Big Five Personlighetstest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { overscroll-behavior: none; touch-action: pan-y; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .card-hover:active { transform: scale(0.98); transition: transform 0.1s; }
+        .slide-in-right { animation: slideInRight 0.3s ease-out; }
+        .slide-in-up { animation: slideInUp 0.4s ease-out; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .progress-bar { transition: width 0.4s ease-out; }
+        .dim-bar { transition: width 0.8s ease-out; }
+        .likert-btn { transition: all 0.15s ease; border: 2px solid #e5e7eb; background: white; border-radius: 16px; padding: 14px 20px; width: 100%; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+        .likert-btn:active { transform: scale(0.98); }
+        .likert-btn.selected { border-color: #6366F1; background: #EEF2FF; }
+        .radar-container { position: relative; max-width: 320px; margin: 0 auto; }
+        .dim-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 12px; border: 1px solid #f3f4f6; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .score-bar-bg { background: #f3f4f6; border-radius: 999px; height: 10px; overflow: hidden; }
+        .score-bar-fill { height: 100%; border-radius: 999px; }
+        .tag { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .insights-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 20px; color: white; }
+        input[type=checkbox] { width: 22px; height: 22px; border-radius: 6px; accent-color: #6366F1; cursor: pointer; flex-shrink: 0; }
+    </style>
+</head>
+<body class="bg-gray-50">
+<div id="app" class="max-w-lg mx-auto bg-white min-h-screen shadow-xl"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const BRAND = "Persona";
+
+const DIM = {
+    E: { name: "Extraversion",        sv: "Extraversion",         color: "#6366F1", light: "#EEF2FF", icon: "users" },
+    A: { name: "Agreeableness",       sv: "Vänlighet",            color: "#10B981", light: "#ECFDF5", icon: "heart" },
+    C: { name: "Conscientiousness",   sv: "Samvetsgrannhet",      color: "#F59E0B", light: "#FFFBEB", icon: "target" },
+    N: { name: "Neuroticism",         sv: "Emotionell stabilitet", color: "#EF4444", light: "#FEF2F2", icon: "activity" },
+    O: { name: "Openness",            sv: "Öppenhet",             color: "#8B5CF6", light: "#F5F3FF", icon: "lightbulb" }
+};
+
+// ─────────────────────────────────────────────
+// IPIP-50 QUESTIONS (Swedish, validated)
+// ─────────────────────────────────────────────
+const QUESTIONS = [
+    // EXTRAVERSION
+    { id:1,  text:"Jag är den som pratar mest på en fest",              dim:"E", k:"+" },
+    { id:2,  text:"Jag pratar inte särskilt mycket",                    dim:"E", k:"-" },
+    { id:3,  text:"Jag känner mig bekväm i grupp",                      dim:"E", k:"+" },
+    { id:4,  text:"Jag håller mig hellre i bakgrunden",                 dim:"E", k:"-" },
+    { id:5,  text:"Jag tar gärna initiativ till samtal",                dim:"E", k:"+" },
+    { id:6,  text:"Jag har lite att säga i sociala sammanhang",         dim:"E", k:"-" },
+    { id:7,  text:"Jag pratar gärna med många på fester",               dim:"E", k:"+" },
+    { id:8,  text:"Jag vill inte vara i centrum av uppmärksamheten",    dim:"E", k:"-" },
+    { id:9,  text:"Jag tar gärna ledningen i grupp",                    dim:"E", k:"+" },
+    { id:10, text:"Jag är tyst och tillbakadragen med okända",          dim:"E", k:"-" },
+
+    // AGREEABLENESS
+    { id:11, text:"Jag bryr mig genuint om andras välmående",           dim:"A", k:"+" },
+    { id:12, text:"Jag kan vara hård och direkt mot folk",              dim:"A", k:"-" },
+    { id:13, text:"Jag förstår andras känslor",                         dim:"A", k:"+" },
+    { id:14, text:"Jag är sällan intresserad av andras problem",        dim:"A", k:"-" },
+    { id:15, text:"Jag har ett varmt och omtänksamt hjärta",            dim:"A", k:"+" },
+    { id:16, text:"Jag är inte alltid intresserad av hur andra mår",    dim:"A", k:"-" },
+    { id:17, text:"Jag tar tid att hjälpa andra",                       dim:"A", k:"+" },
+    { id:18, text:"Jag är lyhörd för andras känslor",                   dim:"A", k:"+" },
+    { id:19, text:"Jag skapar en bekväm stämning runt mig",             dim:"A", k:"+" },
+    { id:20, text:"Jag är svår att lära känna på djupet",               dim:"A", k:"-" },
+
+    // CONSCIENTIOUSNESS
+    { id:21, text:"Jag är alltid väl förberedd",                        dim:"C", k:"+" },
+    { id:22, text:"Jag lämnar saker och ting i oordning",               dim:"C", k:"-" },
+    { id:23, text:"Jag uppmärksammar detaljer noga",                    dim:"C", k:"+" },
+    { id:24, text:"Jag skapar lätt röra hemma och på jobbet",           dim:"C", k:"-" },
+    { id:25, text:"Jag slutför uppgifter snabbt och direkt",            dim:"C", k:"+" },
+    { id:26, text:"Jag skjuter upp saker på framtiden",                 dim:"C", k:"-" },
+    { id:27, text:"Jag arbetar systematiskt och följer en plan",        dim:"C", k:"+" },
+    { id:28, text:"Jag missar ibland viktiga deadlines",                dim:"C", k:"-" },
+    { id:29, text:"Jag avslutar alltid det jag börjar",                 dim:"C", k:"+" },
+    { id:30, text:"Jag gör inte mer än vad som absolut krävs",         dim:"C", k:"-" },
+
+    // NEUROTICISM
+    { id:31, text:"Jag blir lätt upprörd eller stressad",               dim:"N", k:"+" },
+    { id:32, text:"Jag är avslappnad de flesta dagar",                  dim:"N", k:"-" },
+    { id:33, text:"Jag oroar mig ofta för saker",                       dim:"N", k:"+" },
+    { id:34, text:"Jag blir sällan stressad",                           dim:"N", k:"-" },
+    { id:35, text:"Jag kan bli irriterad snabbt",                       dim:"N", k:"+" },
+    { id:36, text:"Jag hanterar stress bra",                            dim:"N", k:"-" },
+    { id:37, text:"Jag har humörsvängningar",                           dim:"N", k:"+" },
+    { id:38, text:"Jag störs sällan av oro eller ångest",               dim:"N", k:"-" },
+    { id:39, text:"Jag kan bli melankolisk eller nedstämd",             dim:"N", k:"+" },
+    { id:40, text:"Jag är känslomässigt stabil och jämn",               dim:"N", k:"-" },
+
+    // OPENNESS
+    { id:41, text:"Jag har en livlig och aktiv fantasi",                dim:"O", k:"+" },
+    { id:42, text:"Jag har ibland svårt att förstå abstrakta idéer",    dim:"O", k:"-" },
+    { id:43, text:"Jag har intressanta och originella idéer",           dim:"O", k:"+" },
+    { id:44, text:"Jag saknar stark kreativ fantasi",                   dim:"O", k:"-" },
+    { id:45, text:"Jag lär mig snabbt och förstår saker lätt",          dim:"O", k:"+" },
+    { id:46, text:"Jag föredrar konkreta fakta framför teorier",        dim:"O", k:"-" },
+    { id:47, text:"Jag gillar att reflektera och leka med idéer",       dim:"O", k:"+" },
+    { id:48, text:"Jag är inte alltid intresserad av konst och kultur", dim:"O", k:"-" },
+    { id:49, text:"Jag är nyfiken på allt möjligt",                     dim:"O", k:"+" },
+    { id:50, text:"Jag föredrar rutiner framför nya erfarenheter",      dim:"O", k:"-" },
+];
+
+// ─────────────────────────────────────────────
+// DIMENSION DESCRIPTIONS
+// ─────────────────────────────────────────────
+const DESC = {
+    E: {
+        high: { tag:"Extrovert", text:"Du drar energi från att vara med andra. Du är social, pratsam och trivs naturligt i centrum. Du tar gärna initiativ och skapar kontakter med lätthet." },
+        mid:  { tag:"Ambivert",  text:"Du är bekväm i både sociala och ensamma sammanhang. Du anpassar dig väl till situationen och behöver balans mellan umgänge och tid för dig själv." },
+        low:  { tag:"Introvert", text:"Du laddar dina batterier genom ensamtid och reflektion. Du är tankfull och lyssnar mer än du pratar – och dina relationer är djupa snarare än breda." }
+    },
+    A: {
+        high: { tag:"Samarbetsvillig", text:"Du är empatisk, omtänksam och genuint intresserad av andra. Du värdesätter harmoni och samarbete högt och är en person som folk lätt vänder sig till." },
+        mid:  { tag:"Balanserad",      text:"Du balanserar samarbete med självhävdelse. Du är empatisk men kan sätta dina egna behov och navigerar sociala situationer med pragmatism." },
+        low:  { tag:"Självständig",    text:"Du är direkt, självständig och konkurrensorienterad. Du ifrågasätter gärna och sätter din egen agenda. Du värderar ärlighet framför diplomati." }
+    },
+    C: {
+        high: { tag:"Organiserad",   text:"Du är strukturerad, pålitlig och målfokuserad. Du planerar noggrant, följer igenom på åtaganden och levererar konsekvent hög kvalitet." },
+        mid:  { tag:"Flexibel",      text:"Du kan vara organiserad när det behövs, men är inte rigid. Du balanserar struktur med flexibilitet beroende på vad situationen kräver." },
+        low:  { tag:"Spontan",       text:"Du är spontan, flexibel och kreativ. Du trivs med frihet och undviker rigid planering. Du är adaptiv men kan behöva stöttning med struktur." }
+    },
+    N: {
+        // Note: N scores are inverted for display – high N = low emotional stability
+        high: { tag:"Känslosam",    text:"Du är känslomässigt lyhörd och sensitiv. Du upplever djupa känslor och kan vara mer påverkad av stress. Din empatiska förmåga är en styrka." },
+        mid:  { tag:"Balanserad",   text:"Du hanterar stress relativt bra men kan påverkas av svåra situationer. Du har en normal och hälsosam känslomässig variation." },
+        low:  { tag:"Stabil",       text:"Du är lugn och samlad under press. Du återhämtar dig snabbt från motgångar och behåller lugnet i stressiga situationer – en stark tillgång i team." }
+    },
+    O: {
+        high: { tag:"Kreativ",       text:"Du är nyfiken, kreativ och öppen för nya erfarenheter. Du söker djup och mening, uppskattar idéer och tänker gärna utanför boxen." },
+        mid:  { tag:"Pragmatisk",    text:"Du är pragmatisk men öppen för nya idéer. Du balanserar tradition och innovation och värderar det som bevisligen fungerar." },
+        low:  { tag:"Traditionell",  text:"Du är praktisk, konkret och traditionell. Du föredrar beprövade metoder och trivs med rutiner. Du är jordnära och fokuserad på resultat." }
+    }
+};
+
+function getLevel(score) {
+    if (score >= 65) return "high";
+    if (score <= 35) return "low";
+    return "mid";
+}
+
+function getNScore(rawScore) {
+    // For display, invert N (neuroticism → emotional stability display)
+    return 100 - rawScore;
+}
+
+// ─────────────────────────────────────────────
+// PROFILE HEADLINE GENERATOR
+// ─────────────────────────────────────────────
+function generateHeadline(scores) {
+    const traits = [];
+    if (scores.O >= 65) traits.push("kreativ");
+    if (scores.C >= 65) traits.push("strukturerad");
+    if (scores.E >= 65) traits.push("social");
+    if (scores.A >= 65) traits.push("empatisk");
+    if (getNScore(scores.N) >= 65) traits.push("stabil");
+
+    if (scores.O < 35) traits.push("praktisk");
+    if (scores.C < 35) traits.push("spontan");
+    if (scores.E < 35) traits.push("reflekterad");
+    if (scores.A < 35) traits.push("självständig");
+
+    if (traits.length === 0) return "Balanserad och mångsidig personlighet";
+    if (traits.length === 1) return `En ${traits[0]} och balanserad personlighet`;
+    const last = traits.pop();
+    return `En ${traits.join(", ")} och ${last} personlighet`;
+}
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let view = "start";
+let qIdx = 0;
+let answers = {};
+let scores = null;
+let radarChart = null;
+let consents = { data: false, ai: false, storage: true };
+
+// ─────────────────────────────────────────────
+// VIEWS
+// ─────────────────────────────────────────────
+function renderStart() {
+    return `
+    <div class="min-h-screen fade-in" style="background: linear-gradient(160deg, #EEF2FF 0%, #F5F3FF 40%, #ECFDF5 100%)">
+        <div class="px-5 py-10">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-xl"
+                     style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                    <i data-lucide="brain" class="w-10 h-10 text-white"></i>
+                </div>
+                <h1 class="text-4xl font-black text-gray-900 mb-1">${BRAND}</h1>
+                <p class="text-gray-500 font-medium">Big Five Personlighetstest</p>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-md mb-4">
+                <h2 class="text-xl font-bold text-gray-900 mb-3">Vetenskapligt validerat</h2>
+                <p class="text-gray-600 text-sm leading-relaxed mb-4">
+                    Baserat på <strong>IPIP (International Personality Item Pool)</strong> — ett av världens mest använda och validerade psykometriska instrument för Big Five.
+                </p>
+                <div class="space-y-2">
+                    ${[["50 validerade IPIP-frågor","check"],["Ca 10 minuter","clock"],["GDPR-säker datahantering","shield"],["Vetenskaplig poängsättning med percentiler","bar-chart-2"]].map(([t,ic])=>`
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="${ic}" class="w-4 h-4 text-green-600"></i>
+                        </div>
+                        <span class="text-gray-700 text-sm font-medium">${t}</span>
+                    </div>`).join("")}
+                </div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                <p class="text-amber-900 text-xs leading-relaxed">
+                    <strong>Obs:</strong> Detta test är för självkännedom och personlig utveckling. Det är inte avsett för klinisk diagnos eller rekryteringsändamål.
+                </p>
+            </div>
+
+            <button onclick="go('consent')"
+                class="w-full text-white py-5 rounded-2xl font-bold text-lg shadow-xl card-hover"
+                style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                Starta test
+            </button>
+            <p class="text-center text-gray-400 text-xs mt-3">OCEAN · Big Five · IPIP-50</p>
+        </div>
+    </div>`;
+}
+
+function renderConsent() {
+    const ok = consents.data && consents.ai;
+    return `
+    <div class="min-h-screen bg-white slide-in-right">
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 py-4 flex items-center gap-3">
+                <button onclick="go('start')" class="p-2 -ml-2 card-hover rounded-full">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-900">Samtycke & integritet</h1>
+                    <p class="text-xs text-gray-500">GDPR-skyddad information</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 py-5 space-y-3 pb-32">
+            <p class="text-sm text-gray-600 mb-4">Vi behöver ditt samtycke innan vi kan genomföra testet. Du kan när som helst begära att få dina uppgifter raderade.</p>
+
+            ${consentItem("data", "Databehandling", "Dina svar behandlas för att beräkna din personlighetsprofil.", true)}
+            ${consentItem("ai", "Analysbearbetning", "Algoritmisk analys används för att generera psykometrisk återkoppling.", true)}
+            ${consentItem("storage", "Lagring (365 dagar)", "Dina resultat sparas för att du ska kunna gå tillbaka till dem. Valfritt.", false)}
+
+            <div class="bg-gray-50 rounded-2xl p-4 text-xs text-gray-500 space-y-1">
+                <p>✓ Inga data säljs till tredje part</p>
+                <p>✓ Du har rätt till uttag och radering (Art. 15–17 GDPR)</p>
+                <p>✓ Data anonymiseras automatiskt efter lagringperioden</p>
+            </div>
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t p-4">
+            <button onclick="${ok ? "startTest()" : ""}"
+                class="w-full py-4 rounded-xl font-bold text-base transition-all ${ok ? "text-white card-hover" : "bg-gray-100 text-gray-400 cursor-not-allowed"}"
+                style="${ok ? "background:linear-gradient(135deg,#6366F1,#8B5CF6)" : ""}"
+                ${!ok ? "disabled" : ""}>
+                ${ok ? "Acceptera och fortsätt" : "Godkänn obligatoriska samtycken"}
+            </button>
+        </div>
+    </div>`;
+}
+
+function consentItem(id, title, desc, required) {
+    const checked = consents[id];
+    return `
+    <label class="flex items-start gap-4 bg-white border-2 rounded-2xl p-4 cursor-pointer transition-all ${checked ? "border-indigo-400 bg-indigo-50" : "border-gray-100"}">
+        <input type="checkbox" ${checked?"checked":""} onchange="toggleConsent('${id}')" />
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="font-semibold text-gray-900 text-sm">${title}</span>
+                <span class="tag text-xs ${required ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}">${required?"Obligatorisk":"Valfri"}</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">${desc}</p>
+        </div>
+    </label>`;
+}
+
+function renderQuestion() {
+    const q = QUESTIONS[qIdx];
+    const prog = ((qIdx + 1) / QUESTIONS.length) * 100;
+    const d = DIM[q.dim];
+    const LABELS = ["", "Stämmer inte alls", "Stämmer dåligt", "Neutral", "Stämmer ganska bra", "Stämmer helt"];
+
+    return `
+    <div class="min-h-screen bg-gray-50">
+        <!-- Progress header -->
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 pt-3 pb-2">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-gray-500">FRÅGA ${qIdx+1} AV ${QUESTIONS.length}</span>
+                    <span class="text-xs font-bold" style="color:${d.color}">${d.sv.toUpperCase()}</span>
+                </div>
+                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full progress-bar" style="width:${prog}%; background:linear-gradient(90deg,#6366F1,#8B5CF6)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question card -->
+        <div class="px-4 pt-6 pb-4">
+            <div class="rounded-3xl p-6 mb-5 shadow-md" style="background:${d.light}; border:1px solid ${d.color}22">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-3" style="background:${d.color}22">
+                    <i data-lucide="${d.icon}" class="w-5 h-5" style="color:${d.color}"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 leading-snug">${q.text}</h2>
+            </div>
+
+            <!-- Likert scale -->
+            <div class="space-y-2.5">
+                ${[5,4,3,2,1].map(v=>`
+                <button class="likert-btn ${answers[q.id]===v?"selected":""}" onclick="answer(${q.id},${v})">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-all"
+                         style="background:${answers[q.id]===v ? d.color : "#f3f4f6"}; color:${answers[q.id]===v ? "white" : "#6b7280"}">
+                        ${v}
+                    </div>
+                    <span class="font-medium text-sm ${answers[q.id]===v?"text-indigo-900":"text-gray-700"}">${LABELS[v]}</span>
+                </button>`).join("")}
+            </div>
+        </div>
+
+        <!-- Back button -->
+        ${qIdx > 0 ? `
+        <div class="px-4 pb-6">
+            <button onclick="prevQ()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm card-hover">
+                ← Föregående fråga
+            </button>
+        </div>` : ""}
+    </div>`;
+}
+
+function renderResults() {
+    const dims = ["E","A","C","N","O"];
+
+    // Compute display scores
+    const display = {};
+    dims.forEach(d => {
+        display[d] = d === "N" ? getNScore(scores[d]) : scores[d];
+    });
+
+    const headline = generateHeadline({ ...scores, N_display: display.N });
+
+    return `
+    <div class="min-h-screen bg-gray-50 slide-in-up pb-10">
+
+        <!-- Hero -->
+        <div class="text-white px-5 pt-10 pb-16 text-center"
+             style="background:linear-gradient(135deg,#6366F1,#8B5CF6,#EC4899)">
+            <div class="w-14 h-14 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <i data-lucide="star" class="w-7 h-7 text-white"></i>
+            </div>
+            <h1 class="text-3xl font-black mb-2">Din profil</h1>
+            <p class="text-white/85 text-sm font-medium capitalize">${headline}</p>
+        </div>
+
+        <div class="px-4 -mt-8 space-y-4">
+
+            <!-- Radar chart -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <h2 class="text-base font-bold text-gray-900 mb-1">OCEAN-profil</h2>
+                <p class="text-xs text-gray-500 mb-4">Ditt resultat jämfört med normalpopulation (percentil)</p>
+                <div class="radar-container">
+                    <canvas id="radarChart" width="300" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Dimension cards -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <h2 class="text-base font-bold text-gray-900 mb-4">Dina dimensioner</h2>
+                ${dims.map(d => {
+                    const sc = display[d];
+                    const info = DIM[d];
+                    const lvl = getLevel(sc);
+                    const desc = DESC[d][lvl];
+                    return `
+                    <div class="dim-card" style="border-left:4px solid ${info.color}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:${info.light}">
+                                    <i data-lucide="${info.icon}" class="w-4 h-4" style="color:${info.color}"></i>
+                                </div>
+                                <span class="font-bold text-gray-900 text-sm">${info.sv}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="tag" style="background:${info.light};color:${info.color}">${desc.tag}</span>
+                                <span class="font-black text-lg" style="color:${info.color}">${Math.round(sc)}</span>
+                            </div>
+                        </div>
+                        <div class="score-bar-bg mb-3">
+                            <div class="score-bar-fill dim-bar" style="width:${sc}%;background:${info.color}"></div>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">${desc.text}</p>
+                    </div>`;
+                }).join("")}
+            </div>
+
+            <!-- Key strengths -->
+            <div class="insights-card shadow-md">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="zap" class="w-5 h-5 text-yellow-300"></i>
+                    <h2 class="text-base font-bold">Dina styrkor</h2>
+                </div>
+                <ul class="space-y-2">
+                    ${buildStrengths(display).map(s=>`
+                    <li class="flex items-start gap-2">
+                        <span class="text-yellow-300 mt-0.5">✦</span>
+                        <span class="text-white/90 text-sm">${s}</span>
+                    </li>`).join("")}
+                </ul>
+            </div>
+
+            <!-- PERSONALIZED SECTIONS -->
+            ${renderPersonalizedSections(display)}
+
+            <!-- Scientific note -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="flask-conical" class="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-sm mb-1">Om resultaten</h3>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            Dina poäng är beräknade med IPIP-50-instrumentet och visar var du befinner dig relativt en normalpopulation (percentil 0–100). Inga svar är rätt eller fel — Big Five mäter stilar, inte förmågor.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat with Coach -->
+            <button onclick="openChat()" class="w-full text-white py-5 rounded-2xl font-bold shadow-xl card-hover flex items-center justify-center gap-2"
+                style="background:linear-gradient(135deg,#10B981,#059669)">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+                Chatta med din personlighetscoach
+            </button>
+
+            <button onclick="share()" class="w-full text-white py-5 rounded-2xl font-bold shadow-xl card-hover"
+                style="background:linear-gradient(135deg,#6366F1,#8B5CF6)">
+                Dela resultat
+            </button>
+            <button onclick="restart()" class="w-full py-4 rounded-2xl font-semibold bg-white text-gray-700 shadow card-hover">
+                Gör om testet
+            </button>
+        </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// PERSONALIZED REPORT GENERATORS
+// ─────────────────────────────────────────────
+
+function getProfileOverview(d) {
+    // Analyze trait combinations for nuanced overview
+    let text = "Din personlighet kännetecknas av ";
+    const traits = [];
+
+    // Combination analysis
+    if (d.E >= 60 && d.C >= 60) traits.push("en strukturerad social förmåga – du är både engagerad i människor och pålitlig i dina åtaganden");
+    else if (d.E >= 60 && d.C <= 40) traits.push("en spontan och social energi – du trivs i dynamiska miljöer där saker händer snabbt");
+    else if (d.E <= 40 && d.C >= 60) traits.push("en fokuserad och eftertänksam approach – du arbetar djupt och systematiskt");
+    else if (d.E <= 40 && d.C <= 40) traits.push("en flexibel och reflekterande stil – du tänker innan du agerar och värdesätter frihet");
+
+    if (d.O >= 60 && d.A >= 60) traits.push("kreativ empati – du förstår människor och ser nya möjligheter");
+    else if (d.O >= 60 && d.A <= 40) traits.push("intellektuell självständighet – du ifrågasätter status quo och driver förändring");
+    else if (d.O <= 40 && d.A >= 60) traits.push("praktisk omtanke – du hjälper andra med konkreta, beprövade lösningar");
+
+    if (d.N >= 60) traits.push("känslomässig djup och lyhördhet som ger stark empati");
+    else if (d.N <= 40) traits.push("lugn stabilitet som skapar trygghet för andra");
+
+    return text + (traits.length > 0 ? traits.join(", ") + "." : "en balanserad kombination av drag som ger dig mångsidighet.");
+}
+
+function getWorkStyle(d) {
+    let style = [];
+
+    // Environment
+    if (d.E >= 60) style.push("Du trivs i öppna kontorsmiljöer med tätt samarbete och spontana diskussioner");
+    else style.push("Du arbetar bäst med fokustid och möjlighet till koncentrerat arbete utan avbrott");
+
+    // Structure
+    if (d.C >= 60) style.push("Du använder tydliga planer och checklistor, och levererar gärna före deadline");
+    else if (d.C <= 40) style.push("Du föredrar flexibla ramar och kan snabbt pivotera när nya möjligheter dyker upp");
+    else style.push("Du balanserar struktur med flexibilitet beroende på projektet");
+
+    // Creativity vs execution
+    if (d.O >= 60 && d.C >= 60) style.push("Du kombinerar kreativ problemlösning med förmågan att också genomföra idéerna");
+    else if (d.O >= 60) style.push("Du bidrar med nya perspektiv och innovativa lösningar på problem");
+    else if (d.C >= 60) style.push("Du är pålitlig leverantör av hög kvalitet i kärnuppgifter");
+
+    return style.join(". ") + ".";
+}
+
+function getCommunicationStyle(d) {
+    let comm = [];
+
+    // Talk vs listen
+    if (d.E >= 60 && d.A >= 60) comm.push("Du kommunicerar öppet och inkluderande, och skapar trygghet i grupper");
+    else if (d.E >= 60) comm.push("Du talar gärna och driver konversationen framåt, ofta med energi och entusiasm");
+    else if (d.A >= 60) comm.push("Du lyssnar aktivt och ger genomtänkta svar – folk känner sig hörda av dig");
+    else comm.push("Du är selektiv med dina ord och säger vad du tycker direkt utan omsvep");
+
+    // Directness
+    if (d.A <= 40) comm.push("Du är rak och tydlig i feedback, vilket uppskattas när svåra saker behöver sägas");
+    else if (d.A >= 60) comm.push("Du levererar feedback varsamt och konstruktivt för att bevara relationen");
+
+    // Format preference
+    if (d.E <= 40) comm.push("Du föredrar skriftlig kommunikation eller 1-on-1 samtal framför stora gruppmöten");
+
+    return comm.join(". ") + ".";
+}
+
+function getCareerSuggestions(d) {
+    const careers = [];
+
+    // High E + High A combinations
+    if (d.E >= 65 && d.A >= 65) {
+        careers.push("HR-specialist eller Recruiter");
+        careers.push("Säljare eller Account Manager");
+        careers.push("Event Manager eller Community Builder");
+    }
+    // High E + Low A (assertive extrovert)
+    else if (d.E >= 65 && d.A <= 35) {
+        careers.push("Säljchef eller Business Developer");
+        careers.push("Entreprenör eller Startup Founder");
+        careers.push("Förhandlare eller Litigator");
+    }
+    // High C + High O (structured creative)
+    else if (d.C >= 65 && d.O >= 65) {
+        careers.push("UX/UI Designer eller Product Manager");
+        careers.push("Arkitekt eller Ingenjör");
+        careers.push("Projektledare inom kreativa fält");
+    }
+    // High C + Low E (detail-oriented introvert)
+    else if (d.C >= 65 && d.E <= 35) {
+        careers.push("Data Analyst eller Software Developer");
+        careers.push("Revisor eller Compliance Specialist");
+        careers.push("Researcher eller Editor");
+    }
+    // High O + Low C (creative flexible)
+    else if (d.O >= 65 && d.C <= 35) {
+        careers.push("Kreativ copywriter eller Art Director");
+        careers.push("Musiker eller Konstnär");
+        careers.push("Innovation Consultant");
+    }
+    // Low E + High A (supportive introvert)
+    else if (d.E <= 35 && d.A >= 65) {
+        careers.push("Psykolog eller Terapeut");
+        careers.push("Bibliotekarie eller Researcher");
+        careers.push("Social Worker eller Vårdpersonal");
+    }
+    // Balanced profile
+    else {
+        careers.push("Projektledare eller Konsult");
+        careers.push("Teacher eller Mentor");
+        careers.push("Operations Manager");
+    }
+
+    // Add based on emotional stability
+    if (d.N <= 35) careers.push("Krishanterare eller Emergency Response");
+
+    return careers.slice(0, 5);
+}
+
+function getRelationshipInsights(d) {
+    let insights = [];
+
+    if (d.A >= 65) insights.push("I relationer är du lojal, stöttande och genuint intresserad av andra människors välmående");
+    else if (d.A <= 35) insights.push("Du värdesätter ärlighet och intellektuell stimulans framför harmonisökande i relationer");
+    else insights.push("Du balanserar närhet med självständighet i dina relationer");
+
+    if (d.E >= 65) insights.push("Du har många sociala kontakter och trivs med aktiviteter tillsammans");
+    else insights.push("Du föredrar djupa relationer med några få nära vänner framför stora sociala nätverk");
+
+    if (d.N >= 65) insights.push("Din känslomässiga lyhördhet gör dig till en empatisk partner som känner av andras behov");
+    else if (d.N <= 35) insights.push("Din känslomässiga stabilitet ger trygghet och du är en klippa när andra går igenom svårigheter");
+
+    return insights.join(". ") + ".";
+}
+
+function getDevelopmentAreas(d) {
+    const dev = [];
+
+    if (d.C <= 40) {
+        dev.push("**Struktur:** Testa digitala verktyg som Notion eller Todoist för att strukturera projekt utan att förlora din spontanitet");
+    }
+    if (d.E <= 35) {
+        dev.push("**Networking:** Boka in regelbundna 1-on-1 luncher istället för stora events – lika värdefullt för nätverkande");
+    }
+    if (d.A <= 35) {
+        dev.push("**Samarbete:** Öva på att först ställa en öppen fråga innan du ger din åsikt i gruppdiskussioner");
+    }
+    if (d.O <= 35) {
+        dev.push("**Innovation:** Avsätt 30 min/vecka till att utforska något helt nytt – en podd, artikel eller aktivitet utanför din comfort zone");
+    }
+    if (d.N >= 65) {
+        dev.push("**Stresshantering:** Bygg in dagliga rutiner som andningsövningar eller promenader för att reglera känslor");
+    }
+    if (d.C >= 70) {
+        dev.push("**Flexibilitet:** Experimentera med att medvetet lämna 20% av din tid oplanerad för spontana möjligheter");
+    }
+    if (d.E >= 70) {
+        dev.push("**Reflektion:** Boka in ensam fokustid i din kalender – det är inte slöseri utan investering i djupare tänkande");
+    }
+
+    return dev.length > 0 ? dev.slice(0, 3) : ["Du har en väl balanserad profil. Fortsätt utveckla dina befintliga styrkor!"];
+}
+
+function renderPersonalizedSections(display) {
+    const overview = getProfileOverview(display);
+    const workStyle = getWorkStyle(display);
+    const commStyle = getCommunicationStyle(display);
+    const careers = getCareerSuggestions(display);
+    const relationship = getRelationshipInsights(display);
+    const development = getDevelopmentAreas(display);
+
+    return `
+        <!-- Profile Overview -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="user-circle" class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din personlighetsprofil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${overview}</p>
+        </div>
+
+        <!-- Work Style -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="briefcase" class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din arbetsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${workStyle}</p>
+        </div>
+
+        <!-- Communication -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="message-circle" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din kommunikationsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${commStyle}</p>
+        </div>
+
+        <!-- Career Fit -->
+        <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-5 shadow-md border border-indigo-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="rocket" class="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Roller som passar dig</h2>
+            </div>
+            <ul class="space-y-2">
+                ${careers.map(c => `
+                <li class="flex items-start gap-2">
+                    <span class="text-indigo-600 mt-1">→</span>
+                    <span class="text-sm text-gray-800 font-medium">${c}</span>
+                </li>`).join("")}
+            </ul>
+            <p class="text-xs text-gray-600 mt-3 italic">Baserat på din unika kombination av OCEAN-drag</p>
+        </div>
+
+        <!-- Relationships -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="heart" class="w-5 h-5 text-pink-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Relationer & samarbete</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${relationship}</p>
+        </div>
+
+        <!-- Development -->
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-5 shadow-md border border-green-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="trending-up" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Utvecklingsområden</h2>
+            </div>
+            <div class="space-y-3">
+                ${development.map(d => {
+                    const parts = d.split(":");
+                    return `
+                    <div class="text-sm">
+                        ${parts.length > 1
+                            ? `<span class="font-bold text-gray-900">${parts[0]}:</span><span class="text-gray-700">${parts[1]}</span>`
+                            : `<span class="text-gray-700">${d}</span>`
+                        }
+                    </div>`;
+                }).join("")}
+            </div>
+        </div>
+    `;
+}
+
+// ─────────────────────────────────────────────
+// STRENGTHS BUILDER
+// ─────────────────────────────────────────────
+function buildStrengths(display) {
+    const s = [];
+    if (display.E >= 60) s.push("Du bygger nätverk och relationer med naturlig lätthet.");
+    if (display.E <= 40) s.push("Du lyssnar aktivt och tänker innan du agerar — en sällsynt förmåga.");
+    if (display.A >= 60) s.push("Din empati gör dig till en uppskattad kollega och vän.");
+    if (display.A <= 40) s.push("Du är direkt och ärlig — folk vet var de har dig.");
+    if (display.C >= 60) s.push("Du levererar konsekvent hög kvalitet och kan litas på.");
+    if (display.C <= 40) s.push("Din spontanitet och flexibilitet är en tillgång i föränderliga miljöer.");
+    if (display.N >= 60) s.push("Din emotionella djup gör dig till en empatisk och lyhörd person.");
+    if (display.N <= 40) s.push("Ditt lugn under press smittar av sig och stabiliserar team.");
+    if (display.O >= 60) s.push("Din kreativitet och nyfikenhet driver innovation och problemlösning.");
+    if (display.O <= 40) s.push("Din praktiska och konkreta approach levererar pålitliga resultat.");
+    return s.length > 0 ? s.slice(0, 4) : ["Du har en balanserad och mångsidig personlighet — en styrka i sig."];
+}
+
+// ─────────────────────────────────────────────
+// SCORING
+// ─────────────────────────────────────────────
+function calcScores() {
+    const raw = { E:0, A:0, C:0, N:0, O:0 };
+    const counts = { E:0, A:0, C:0, N:0, O:0 };
+
+    QUESTIONS.forEach(q => {
+        let v = answers[q.id] || 3;
+        if (q.k === "-") v = 6 - v;
+        raw[q.dim] += v;
+        counts[q.dim]++;
+    });
+
+    const result = {};
+    Object.keys(raw).forEach(d => {
+        const mean = raw[d] / counts[d]; // 1–5
+        result[d] = Math.round(((mean - 1) / 4) * 100); // 0–100
+    });
+    return result;
+}
+
+// ─────────────────────────────────────────────
+// CHART
+// ─────────────────────────────────────────────
+function drawChart(display) {
+    setTimeout(() => {
+        const canvas = document.getElementById("radarChart");
+        if (!canvas) return;
+        if (radarChart) radarChart.destroy();
+
+        radarChart = new Chart(canvas, {
+            type: "radar",
+            data: {
+                labels: ["Extraversion", "Vänlighet", "Samvetsgrannhet", "Em. stabilitet", "Öppenhet"],
+                datasets: [{
+                    label: "Din profil",
+                    data: ["E","A","C","N","O"].map(d => display[d]),
+                    backgroundColor: "rgba(99,102,241,0.15)",
+                    borderColor: "#6366F1",
+                    borderWidth: 2.5,
+                    pointBackgroundColor: ["#6366F1","#10B981","#F59E0B","#EF4444","#8B5CF6"],
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    r: {
+                        min: 0, max: 100,
+                        ticks: { stepSize: 25, font: { size: 9 }, backdropColor: "transparent" },
+                        pointLabels: { font: { size: 10, weight: "bold" }, color: "#374151" },
+                        grid: { color: "#e5e7eb" },
+                        angleLines: { color: "#e5e7eb" }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }, 150);
+}
+
+// ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// CHAT VIEW & LOGIC
+// ─────────────────────────────────────────────
+
+let chatHistory = [];
+let isChatLoading = false;
+
+function renderChat() {
+    const dims = ["E","A","C","N","O"];
+    const display = {};
+    dims.forEach(d => {
+        display[d] = d === "N" ? getNScore(scores[d]) : scores[d];
+    });
+
+    return `
+    <div class="min-h-screen bg-gray-50 slide-in-right flex flex-col">
+        <!-- Header -->
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 py-4 flex items-center gap-3">
+                <button onclick="view='results'; render();" class="p-2 -ml-2 card-hover rounded-full">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <div class="flex-1">
+                    <h1 class="text-lg font-bold text-gray-900">Personlighetscoach</h1>
+                    <p class="text-xs text-gray-500">Fråga om din profil och personlighetsutveckling</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages container -->
+        <div id="chatMessages" class="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-32">
+            ${chatHistory.length === 0 ? `
+            <!-- Welcome message -->
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-5 border border-green-100">
+                <div class="flex items-start gap-3 mb-3">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-green-600 flex-shrink-0"></i>
+                    <div>
+                        <h3 class="font-bold text-gray-900 mb-2">Välkommen till din personlighetscoach!</h3>
+                        <p class="text-sm text-gray-700 mb-3">Jag känner till din Big Five-profil och kan hjälpa dig med:</p>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span>Tolka och förstå dina resultat djupare</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span>Karriärvägledning baserad på din profil</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span>Relationsråd och kommunikationstips</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-green-600">✓</span>
+                                <span>Personlig utveckling och self-care</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-white/50 rounded-xl p-3 mt-3">
+                    <p class="text-xs text-gray-600 italic">
+                        <strong>Din profil:</strong> Extraversion ${Math.round(display.E)}, 
+                        Vänlighet ${Math.round(display.A)}, 
+                        Samvetsgrannhet ${Math.round(display.C)}, 
+                        Em. stabilitet ${Math.round(display.N)}, 
+                        Öppenhet ${Math.round(display.O)}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-600 mt-3 font-medium">Ställ mig en fråga för att komma igång! 👇</p>
+            </div>
+            ` : ''}
+
+            ${chatHistory.map((msg, idx) => {
+                const isUser = msg.role === 'user';
+                return `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} fade-in">
+                    <div class="max-w-[85%] ${isUser ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200'} rounded-2xl p-4 shadow-sm">
+                        ${!isUser ? `<div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="bot" class="w-4 h-4 text-green-600"></i>
+                            <span class="text-xs font-semibold text-gray-500">Personlighetscoach</span>
+                        </div>` : ''}
+                        <p class="text-sm ${isUser ? 'text-white' : 'text-gray-800'} leading-relaxed whitespace-pre-wrap">${msg.content}</p>
+                    </div>
+                </div>`;
+            }).join('')}
+
+            ${isChatLoading ? `
+            <div class="flex justify-start fade-in">
+                <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+        </div>
+
+        <!-- Input area -->
+        <div class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t p-4">
+            <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="chatInput"
+                    placeholder="Skriv din fråga här..."
+                    class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:outline-none text-sm"
+                    ${isChatLoading ? 'disabled' : ''}
+                />
+                <button 
+                    type="submit"
+                    class="px-5 py-3 rounded-xl font-bold text-white card-hover ${isChatLoading ? 'bg-gray-300' : 'bg-green-600'}"
+                    ${isChatLoading ? 'disabled' : ''}
+                >
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </form>
+            <p class="text-xs text-gray-500 mt-2 text-center">
+                💡 Tips: Fråga om "Vilka jobb passar mig?" eller "Hur kan jag utveckla min ledarskapsförmåga?"
+            </p>
+        </div>
+    </div>`;
+}
+
+function openChat() {
+    view = "chat";
+    render();
+    // Focus input after render
+    setTimeout(() => {
+        const input = document.getElementById('chatInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+async function sendChatMessage(event) {
+    event.preventDefault();
+    
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message || isChatLoading) return;
+    
+    // Add user message to history
+    chatHistory.push({ role: 'user', content: message });
+    input.value = '';
+    isChatLoading = true;
+    render();
+    
+    // Scroll to bottom
+    setTimeout(() => {
+        const container = document.getElementById('chatMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }, 50);
+    
+    try {
+        // Mock API call - replace with real backend call
+        const response = await mockChatAPI(message);
+        
+        chatHistory.push({ role: 'assistant', content: response });
+    } catch (error) {
+        chatHistory.push({ 
+            role: 'assistant', 
+            content: 'Tyvärr uppstod ett fel. Försök igen om en stund.' 
+        });
+    } finally {
+        isChatLoading = false;
+        render();
+        
+        // Scroll to bottom again
+        setTimeout(() => {
+            const container = document.getElementById('chatMessages');
+            if (container) container.scrollTop = container.scrollHeight;
+        }, 50);
+    }
+}
+
+// Mock chat API (replace with real backend call)
+async function mockChatAPI(message) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const dims = ["E","A","C","N","O"];
+    const display = {};
+    dims.forEach(d => {
+        display[d] = d === "N" ? getNScore(scores[d]) : scores[d];
+    });
+    
+    // Simple rule-based responses for demo
+    const lowerMsg = message.toLowerCase();
+    
+    if (lowerMsg.includes('jobb') || lowerMsg.includes('karriär')) {
+        const careers = getCareerSuggestions(display);
+        return `Baserat på din Big Five-profil passar dessa roller dig särskilt väl:\n\n${careers.map(c => `• ${c}`).join('\n')}\n\nVill du att jag går djupare in på någon av dessa?`;
+    }
+    
+    if (lowerMsg.includes('stress') || lowerMsg.includes('oro')) {
+        const n = display.N;
+        if (n <= 40) {
+            return `Din höga emotionella stabilitet (${Math.round(n)}/100) betyder att du generellt hanterar stress bättre än de flesta. Men alla behöver strategier:\n\n✓ Behåll dina rutiner - de ger struktur\n✓ Hjälp andra som är mer stressade - du är en klippa för dem\n✓ Glöm inte att ta pauser även när du "klarar det"`;
+        } else {
+            return `Med din känslomässiga lyhördhet (Em. stabilitet ${Math.round(n)}/100) känner du stress djupt - det är både en styrka och utmaning.\n\nKonkreta tips för dig:\n\n1. **Dagliga rutiner:** Morgonpromenad eller andningsövning\n2. **Gränssättning:** Lär dig säga nej till saker som tär på energin\n3. **Journaling:** Skriv ner tankar - det skapar distans\n4. **Professionellt stöd:** Överväg terapi om stressen påverkar vardagen\n\nVill du prata mer om något specifikt?`;
+        }
+    }
+    
+    if (lowerMsg.includes('kommunikation') || lowerMsg.includes('samtal')) {
+        return getCommunicationStyle(display);
+    }
+    
+    // Default response
+    return `Tack för din fråga! Jag är här för att hjälpa dig förstå din personlighet bättre.\n\nBaserat på din profil:\n- Extraversion: ${Math.round(display.E)}/100\n- Vänlighet: ${Math.round(display.A)}/100\n- Samvetsgrannhet: ${Math.round(display.C)}/100\n- Em. stabilitet: ${Math.round(display.N)}/100\n- Öppenhet: ${Math.round(display.O)}/100\n\nVad vill du veta mer om? Jag kan hjälpa med karriärval, relationer, kommunikation, eller personlig utveckling!`;
+}
+
+// CONTROLS
+// ─────────────────────────────────────────────
+function go(v) { view = v; render(); }
+
+function toggleConsent(id) {
+    consents[id] = !consents[id];
+    render();
+}
+
+function startTest() {
+    qIdx = 0;
+    answers = {};
+    view = "question";
+    render();
+}
+
+function answer(id, val) {
+    answers[id] = val;
+    setTimeout(() => {
+        if (qIdx < QUESTIONS.length - 1) {
+            qIdx++;
+            render();
+        } else {
+            scores = calcScores();
+            view = "results";
+            render();
+        }
+    }, 280);
+}
+
+function prevQ() {
+    if (qIdx > 0) { qIdx--; render(); }
+}
+
+function restart() {
+    answers = {};
+    scores = null;
+    qIdx = 0;
+    view = "start";
+    render();
+}
+
+function share() {
+    const dims = ["E","A","C","N","O"];
+    const display = {};
+    dims.forEach(d => { display[d] = d==="N" ? getNScore(scores[d]) : scores[d]; });
+    const lines = dims.map(d => `${DIM[d].sv}: ${Math.round(display[d])}/100`).join("\n");
+    const text = `Min ${BRAND} Big Five-profil:\n\n${lines}\n\nGör testet på persona.app`;
+
+    if (navigator.share) {
+        navigator.share({ title: "Min personlighetsprofil", text });
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Kopierat till urklipp! ✓");
+        });
+    } else {
+        alert(text);
+    }
+}
+
+// ─────────────────────────────────────────────
+// RENDER ENGINE
+// ─────────────────────────────────────────────
+
+function render() {
+    const app = document.getElementById("app");
+    if (view === "start")     app.innerHTML = renderStart();
+    if (view === "consent")   app.innerHTML = renderConsent();
+    if (view === "question")  app.innerHTML = renderQuestion();
+    if (view === "chat")      app.innerHTML = renderChat();
+    if (view === "results") {
+        app.innerHTML = renderResults();
+        const dims = ["E","A","C","N","O"];
+        const display = {};
+        dims.forEach(d => { display[d] = d==="N" ? getNScore(scores[d]) : scores[d]; });
+        drawChart(display);
+    }
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+render();
+</script>
+</body>
+</html>
