@@ -572,8 +572,16 @@ async def submit_assessment(req: SubmitAssessmentRequest):
     headline = generate_headline(display_scores, lang)
     strengths = build_strengths(display_scores, lang)
 
+    _sessions.pop(req.assessment_id, None)
     # Generate AI-powered personalized report (if API key available)
     personalized_report = generate_personalized_report(display_scores, percentiles, lang)
+
+    # Save profile for personality coach chat
+    _user_profiles[session["user_id"]] = {
+        "scores": display_scores,
+        "report": personalized_report.dict() if personalized_report else None,
+        "saved_at": datetime.utcnow().isoformat()
+    }
 
     # Clean session
     _sessions.pop(req.assessment_id, None)
@@ -611,3 +619,105 @@ async def get_questions_preview():
 @app.get("/api/v1/health")
 async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PERSONALITY COACH CHAT
+# ══════════════════════════════════════════════════════════════════════════════
+
+from personality_coach import chat_with_personality_coach
+
+# Store user profiles in memory (replace with DB in production)
+_user_profiles: Dict[str, Dict] = {}
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    user_id: str
+    message: str
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    include_profile: bool = Field(default=True, description="Use user's assessment profile if available")
+
+
+class ChatResponse(BaseModel):
+    response: str
+    conversation_history: List[ChatMessage]
+
+
+@app.post("/api/v1/chat", response_model=ChatResponse)
+async def personality_coach_chat(req: ChatRequest):
+    """
+    Chat with AI personality coach. If user has completed assessment,
+    coach will provide personalized advice based on their Big Five profile.
+    """
+
+    if not anthropic_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Chat feature unavailable - no API key configured"
+        )
+
+    # Get user's profile if available
+    profile_scores = None
+    personalized_report = None
+
+    if req.include_profile and req.user_id in _user_profiles:
+        user_data = _user_profiles[req.user_id]
+        profile_scores = user_data.get("scores")
+        personalized_report = user_data.get("report")
+
+    # Convert ChatMessage objects to dicts
+    history = [{"role": msg.role, "content": msg.content} for msg in req.conversation_history]
+
+    # Get response from personality coach
+    response_text = chat_with_personality_coach(
+        message=req.message,
+        conversation_history=history,
+        profile_scores=profile_scores,
+        personalized_report=personalized_report,
+        anthropic_client=anthropic_client
+    )
+
+    # Build updated conversation history
+    updated_history = history + [
+        {"role": "user", "content": req.message},
+        {"role": "assistant", "content": response_text}
+    ]
+
+    return ChatResponse(
+        response=response_text,
+        conversation_history=[ChatMessage(**msg) for msg in updated_history]
+    )
+
+
+@app.post("/api/v1/chat/save-profile")
+async def save_user_profile(
+    user_id: str,
+    scores: Dict[str, float],
+    report: Optional[Dict[str, Any]] = None
+):
+    """
+    Save user's assessment profile for use in chat.
+    Called automatically after completing assessment.
+    """
+    _user_profiles[user_id] = {
+        "scores": scores,
+        "report": report,
+        "saved_at": datetime.utcnow().isoformat()
+    }
+    return {"status": "saved", "user_id": user_id}
+
+
+@app.get("/api/v1/chat/profile/{user_id}")
+async def get_user_chat_profile(user_id: str):
+    """Check if user has a saved profile for chat context."""
+    if user_id in _user_profiles:
+        return {
+            "has_profile": True,
+            "saved_at": _user_profiles[user_id].get("saved_at")
+        }
+    return {"has_profile": False}
