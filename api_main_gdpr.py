@@ -22,6 +22,7 @@ from database import (
 )
 from api_gdpr import router as gdpr_router
 from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
+from api_disc import router as disc_router
 from monitoring import init_sentry, rate_limit_middleware
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ app.middleware("http")(rate_limit_middleware)
 
 app.include_router(gdpr_router)
 app.include_router(admin_router)
+app.include_router(disc_router)
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
 anthropic_client = None
@@ -488,10 +490,21 @@ _sessions: Dict[str, dict] = {}
 @app.get("/")
 async def root():
     return {
-        "service": "Persona – Big Five Assessment API",
-        "version": "3.0.0",
+        "service": "Persona – Personality Assessment API",
+        "version": "4.0.0",
         "docs": "/docs",
-        "instrument": "IPIP-50 (International Personality Item Pool)",
+        "assessments": {
+            "big_five": {
+                "instrument": "IPIP-50 (International Personality Item Pool)",
+                "dimensions": ["Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness"],
+                "endpoint": "/api/v1/assessment/start"
+            },
+            "disc": {
+                "instrument": "DISC Behavioral Assessment",
+                "dimensions": ["Dominance", "Influence", "Steadiness", "Conscientiousness"],
+                "endpoint": "/api/v1/disc/start"
+            }
+        },
         "status": "ready",
     }
 
