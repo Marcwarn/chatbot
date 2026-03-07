@@ -21,26 +21,21 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # Simple token-based auth (upgrade to JWT in production)
 _admin_sessions: Dict[str, dict] = {}  # token -> {created_at, expires_at}
 
-# Require ADMIN_PASSWORD_HASH to be set (no default!)
-ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
-if not ADMIN_PASSWORD_HASH:
-    raise ValueError(
-        "SECURITY ERROR: ADMIN_PASSWORD_HASH must be set in environment variables!\n"
-        "Generate hash: python -c 'import bcrypt; print(bcrypt.hashpw(b\"your_password\", bcrypt.gensalt()).decode())'"
-    )
-
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")  # bcrypt hash (optional)
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")             # plain password fallback
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 
-def hash_password(password: str) -> str:
-    """Hash password with bcrypt (secure)"""
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-def verify_password(password: str, hashed: str) -> bool:
-    """Verify password using constant-time comparison"""
-    try:
-        return bcrypt.checkpw(password.encode(), hashed.encode())
-    except Exception:
-        return False
+def verify_password(password: str) -> bool:
+    """Verify password — supports plain ADMIN_PASSWORD or bcrypt ADMIN_PASSWORD_HASH."""
+    import hmac
+    if ADMIN_PASSWORD:
+        return hmac.compare_digest(password, ADMIN_PASSWORD)
+    if ADMIN_PASSWORD_HASH:
+        try:
+            return bcrypt.checkpw(password.encode(), ADMIN_PASSWORD_HASH.encode())
+        except Exception:
+            return False
+    return False
 
 def verify_admin_token(authorization: Optional[str] = Header(None)) -> dict:
     """Verify admin authentication token"""
@@ -128,7 +123,7 @@ async def admin_login(req: AdminLoginRequest):
     """Admin login - returns auth token"""
 
     # Check username then password (constant-time)
-    if req.username != ADMIN_USERNAME or not verify_password(req.password, ADMIN_PASSWORD_HASH):
+    if req.username != ADMIN_USERNAME or not verify_password(req.password):
         raise HTTPException(status_code=401, detail="Ogiltigt användarnamn eller lösenord")
 
     # Generate session token
