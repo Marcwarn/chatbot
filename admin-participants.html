@@ -168,7 +168,8 @@
         <h2 style="margin-bottom:20px; font-size:20px;">Admin-inloggning</h2>
         <div class="form-group">
           <label class="form-label">Lösenord</label>
-          <input type="password" id="login-pw" class="form-input" placeholder="Admin-lösenord" onkeydown="if(e.key==='Enter')doLogin()" />
+          <input type="text" id="login-user" class="form-input" placeholder="Användarnamn" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')doLogin()" />
+          <input type="password" id="login-pw" class="form-input" placeholder="Lösenord" onkeydown="if(event.key==='Enter')doLogin()" />
         </div>
         <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Logga in</button>
         <p id="login-err" style="color:var(--danger); font-size:13px; margin-top:10px; display:none;"></p>
@@ -324,11 +325,12 @@ function showMain() {
 }
 
 async function doLogin() {
+  const user = document.getElementById("login-user").value;
   const pw = document.getElementById("login-pw").value;
   const res = await fetch("/api/admin/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: pw })
+    body: JSON.stringify({ username: user, password: pw })
   });
   if (!res.ok) {
     const err = document.getElementById("login-err");
