@@ -14,6 +14,8 @@
         { "src": "/api/(.*)", "dest": "/api/index.py" },
         { "src": "/disc/(.*)", "dest": "/api/index.py" },
         { "src": "/admin", "dest": "/admin.html" },
+        { "src": "/admin-participants", "dest": "/admin-participants.html" },
+        { "src": "/invite", "dest": "/invite.html" },
         { "src": "/disc-assessment", "dest": "/disc-assessment.html" },
         { "src": "/", "dest": "/landing.html" },
         { "src": "/(.*)\\.html", "dest": "/$1.html" },
