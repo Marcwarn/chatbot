@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from mangum import Mangum
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -46,4 +45,3 @@ async def login(req: LoginReq):
 async def ping():
     return {"ok": True, "user": ADMIN_USERNAME, "has_pw": bool(ADMIN_PASSWORD), "has_hash": bool(ADMIN_PASSWORD_HASH)}
 
-handler = Mangum(app, lifespan="off")
