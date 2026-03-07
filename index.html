@@ -1,12 +1,310 @@
 <!DOCTYPE html>
-<html>
+<html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/big-five-demo.html">
-    <title>Redirecting...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Persona - Personlighets- och Beteendeanalys</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            overscroll-behavior: none;
+            touch-action: pan-y;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(160deg, #EEF2FF 0%, #FFF5F5 40%, #FFFEF0 70%, #F0FFF4 100%);
+            min-height: 100vh;
+        }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
+        .card-hover:active { transform: scale(0.98); }
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .gradient-text {
+            background: linear-gradient(135deg, #6366F1, #8B5CF6, #EC4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .assessment-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .assessment-card:hover {
+            border-color: #6366F1;
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecting to Big Five Assessment...</p>
-    <script>window.location.href = '/big-five-demo.html';</script>
+
+<div class="max-w-4xl mx-auto px-4 py-10 fade-in">
+
+    <!-- Header -->
+    <div class="text-center mb-12">
+        <div class="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl"
+             style="background: linear-gradient(135deg, #6366F1, #8B5CF6, #EC4899)">
+            <i data-lucide="brain" class="w-12 h-12 text-white"></i>
+        </div>
+        <h1 class="text-5xl font-black text-gray-900 mb-3">
+            <span class="gradient-text">Persona</span>
+        </h1>
+        <p class="text-xl text-gray-600 font-medium">Vetenskapliga personlighets- och beteendetester</p>
+        <p class="text-sm text-gray-500 mt-2">Välj det test som passar dig bäst</p>
+    </div>
+
+    <!-- Assessment Cards -->
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+
+        <!-- Big Five Card -->
+        <a href="/big-five-demo.html" class="assessment-card card-hover block">
+            <div class="flex items-start gap-4 mb-4">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                     style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                    <i data-lucide="brain" class="w-7 h-7 text-white"></i>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-1">Big Five</h2>
+                    <p class="text-sm font-semibold text-indigo-600">Personlighetstest</p>
+                </div>
+            </div>
+
+            <p class="text-gray-700 text-sm leading-relaxed mb-4">
+                Utforska dina grundläggande <strong>personlighetsdrag</strong> med den vetenskapligt validerade Big Five-modellen (OCEAN).
+                Perfekt för självkännedom och personlig utveckling.
+            </p>
+
+            <div class="bg-indigo-50 rounded-xl p-3 mb-4">
+                <h3 class="text-xs font-bold text-indigo-900 mb-2">De fem dimensionerna:</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-purple-600"></i>
+                        <span class="text-gray-700">Öppenhet</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="target" class="w-3.5 h-3.5 text-orange-600"></i>
+                        <span class="text-gray-700">Samvetsgrannhet</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="users" class="w-3.5 h-3.5 text-indigo-600"></i>
+                        <span class="text-gray-700">Extraversion</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="heart" class="w-3.5 h-3.5 text-green-600"></i>
+                        <span class="text-gray-700">Vänlighet</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 text-red-600"></i>
+                        <span class="text-gray-700">Emotionell stabilitet</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2 mb-4">
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="check" class="w-4 h-4 text-green-600"></i>
+                    <span>50 validerade IPIP-frågor</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="clock" class="w-4 h-4 text-green-600"></i>
+                    <span>Ca 10 minuter</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="trending-up" class="w-4 h-4 text-green-600"></i>
+                    <span>Personlig utveckling & självinsikt</span>
+                </div>
+            </div>
+
+            <button class="w-full text-white py-3.5 rounded-xl font-bold text-sm shadow-lg"
+                    style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                Starta Big Five-test →
+            </button>
+        </a>
+
+        <!-- DISC Card -->
+        <a href="/disc-assessment.html" class="assessment-card card-hover block">
+            <div class="flex items-start gap-4 mb-4">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                     style="background: linear-gradient(135deg, #FF4444, #FFD700)">
+                    <i data-lucide="activity" class="w-7 h-7 text-white"></i>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-1">DISC</h2>
+                    <p class="text-sm font-semibold text-red-600">Beteendeanalys</p>
+                </div>
+            </div>
+
+            <p class="text-gray-700 text-sm leading-relaxed mb-4">
+                Förstå ditt <strong>arbetsbeteende och kommunikationsstil</strong> med DISC-modellen.
+                Idealisk för karriärutveckling, teamarbete och ledarskap.
+            </p>
+
+            <div class="bg-red-50 rounded-xl p-3 mb-4">
+                <h3 class="text-xs font-bold text-red-900 mb-2">De fyra dimensionerna:</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="zap" class="w-3.5 h-3.5 text-red-600"></i>
+                        <span class="text-gray-700">Dominans</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="users" class="w-3.5 h-3.5 text-yellow-600"></i>
+                        <span class="text-gray-700">Inflytande</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="shield" class="w-3.5 h-3.5 text-green-600"></i>
+                        <span class="text-gray-700">Stabilitet</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5 text-blue-600"></i>
+                        <span class="text-gray-700">Konformitet</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2 mb-4">
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="check" class="w-4 h-4 text-green-600"></i>
+                    <span>32 validerade frågor</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="clock" class="w-4 h-4 text-green-600"></i>
+                    <span>Ca 8 minuter</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-gray-600">
+                    <i data-lucide="briefcase" class="w-4 h-4 text-green-600"></i>
+                    <span>Karriär, teamarbete & kommunikation</span>
+                </div>
+            </div>
+
+            <button class="w-full text-white py-3.5 rounded-xl font-bold text-sm shadow-lg"
+                    style="background: linear-gradient(135deg, #FF4444, #FFD700)">
+                Starta DISC-analys →
+            </button>
+        </a>
+
+    </div>
+
+    <!-- Comparison Section -->
+    <div class="bg-white rounded-3xl p-6 shadow-md mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 text-center">Vilken ska jag välja?</h2>
+
+        <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-indigo-50 rounded-2xl p-4 border-2 border-indigo-200">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="brain" class="w-5 h-5 text-indigo-600"></i>
+                    <h3 class="font-bold text-gray-900">Välj Big Five om du vill:</h3>
+                </div>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-600 mt-0.5">•</span>
+                        <span>Förstå din grundläggande personlighet</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-600 mt-0.5">•</span>
+                        <span>Utforska djupa personlighetsdrag</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-600 mt-0.5">•</span>
+                        <span>Utvecklas personligt och emotionellt</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-indigo-600 mt-0.5">•</span>
+                        <span>Förstå dina relationer bättre</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-red-50 rounded-2xl p-4 border-2 border-red-200">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="activity" class="w-5 h-5 text-red-600"></i>
+                    <h3 class="font-bold text-gray-900">Välj DISC om du vill:</h3>
+                </div>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-600 mt-0.5">•</span>
+                        <span>Förbättra din arbetsprestation</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-600 mt-0.5">•</span>
+                        <span>Förstå din kommunikationsstil</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-600 mt-0.5">•</span>
+                        <span>Utveckla ditt ledarskap</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-600 mt-0.5">•</span>
+                        <span>Bygga bättre teamdynamik</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-4 bg-gray-50 rounded-xl p-4">
+            <div class="flex items-start gap-2">
+                <i data-lucide="lightbulb" class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5"></i>
+                <p class="text-sm text-gray-700">
+                    <strong>Pro-tips:</strong> Gör båda testen! Big Five och DISC kompletterar varandra perfekt.
+                    Big Five ger dig djup självinsikt om din personlighet, medan DISC hjälper dig att applicera
+                    den kunskapen i arbetslivet och teamsammanhang.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="bg-white rounded-3xl p-6 shadow-md mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 text-center">Varför Persona?</h2>
+
+        <div class="grid md:grid-cols-3 gap-4">
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                     style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-1">Vetenskapligt validerat</h3>
+                <p class="text-xs text-gray-600">Baserat på beprövade psykometriska modeller</p>
+            </div>
+
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                     style="background: linear-gradient(135deg, #10B981, #059669)">
+                    <i data-lucide="lock" class="w-6 h-6 text-white"></i>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-1">GDPR-säkert</h3>
+                <p class="text-xs text-gray-600">Dina data är skyddade och krypterade</p>
+            </div>
+
+            <div class="text-center">
+                <div class="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                     style="background: linear-gradient(135deg, #F59E0B, #D97706)">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-1">AI-driven analys</h3>
+                <p class="text-xs text-gray-600">Personliga insikter och utvecklingsråd</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-gray-500 text-xs space-y-1 mb-8">
+        <p>© 2026 Persona · Vetenskaplig personlighets- och beteendeanalys</p>
+        <p>IPIP-50 · OCEAN · DISC · Psykometrisk forskning</p>
+    </div>
+
+</div>
+
+<script>
+    // Initialize Lucide icons
+    if (typeof lucide !== "undefined") {
+        lucide.createIcons();
+    }
+</script>
+
 </body>
 </html>

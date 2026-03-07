@@ -82,7 +82,8 @@ class SecurityScanner:
             "timing_attack": {
                 "severity": Severity.CRITICAL,
                 "patterns": [
-                    (r'(?:password|token|secret|api_key)\s*[!=]=\s*(?:password|token|secret|api_key)', "Timing attack in comparison"),
+                    (r'if\s+(?:password|token|secret|api_key|hash)\s*[!=]=', "Timing attack in comparison"),
+                    (r'(?:password|token|secret|api_key|hash)\s*[!=]=\s*(?:password|token|secret|api_key|hash|stored)', "Timing attack in comparison"),
                 ],
                 "recommendation": "Use secrets.compare_digest() for constant-time comparison",
                 "cwe": "CWE-208"
@@ -91,7 +92,8 @@ class SecurityScanner:
                 "severity": Severity.CRITICAL,
                 "patterns": [
                     (r'execute\s*\(\s*f["\']', "f-string in SQL query"),
-                    (r'execute\s*\(\s*.*\+.*\)', "String concatenation in SQL"),
+                    (r'execute\s*\(\s*["\'].*["\'].*\+', "String concatenation in SQL"),
+                    (r'query\s*=.*\+.*user', "String concatenation in SQL query"),
                     (r'\.format\(.*\).*execute', "String format in SQL"),
                 ],
                 "recommendation": "Use parameterized queries or ORM",

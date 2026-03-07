@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Persona - DISC Beteendeanalys</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { overscroll-behavior: none; touch-action: pan-y; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .card-hover:active { transform: scale(0.98); transition: transform 0.1s; }
+        .slide-in-right { animation: slideInRight 0.3s ease-out; }
+        .slide-in-up { animation: slideInUp 0.4s ease-out; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .progress-bar { transition: width 0.4s ease-out; }
+        .dim-bar { transition: width 0.8s ease-out; }
+        .likert-btn { transition: all 0.15s ease; border: 2px solid #e5e7eb; background: white; border-radius: 16px; padding: 14px 20px; width: 100%; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 14px; }
+        .likert-btn:active { transform: scale(0.98); }
+        .likert-btn.selected { border-color: #FF4444; background: #FFF5F5; }
+        .radar-container { position: relative; max-width: 320px; margin: 0 auto; }
+        .dim-card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 12px; border: 1px solid #f3f4f6; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .score-bar-bg { background: #f3f4f6; border-radius: 999px; height: 10px; overflow: hidden; }
+        .score-bar-fill { height: 100%; border-radius: 999px; }
+        .tag { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .insights-card { background: linear-gradient(135deg, #FF4444 0%, #FF6B6B 100%); border-radius: 20px; padding: 20px; color: white; }
+        input[type=checkbox] { width: 22px; height: 22px; border-radius: 6px; accent-color: #FF4444; cursor: pointer; flex-shrink: 0; }
+    </style>
+</head>
+<body class="bg-gray-50">
+<div id="app" class="max-w-lg mx-auto bg-white min-h-screen shadow-xl"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────
+const BRAND = "Persona";
+
+const DIM = {
+    D: { name: "Dominance",      sv: "Dominans",      color: "#FF4444", light: "#FFF5F5", icon: "zap" },
+    I: { name: "Influence",       sv: "Inflytande",    color: "#FFD700", light: "#FFFEF0", icon: "users" },
+    S: { name: "Steadiness",      sv: "Stabilitet",    color: "#44AA44", light: "#F0FFF4", icon: "shield" },
+    C: { name: "Conscientiousness", sv: "Konformitet", color: "#4444FF", light: "#F0F0FF", icon: "check-circle" }
+};
+
+// ─────────────────────────────────────────────
+// DISC QUESTIONS (Swedish, validated)
+// ─────────────────────────────────────────────
+const QUESTIONS = [
+    // DOMINANCE (D) - 8 questions
+    { id:1,  text:"Jag tar gärna kommandon och fattar snabba beslut",              dim:"D", k:"+" },
+    { id:2,  text:"Jag tycker om utmaningar och konkurrens",                       dim:"D", k:"+" },
+    { id:3,  text:"Jag föredrar att andra fattar besluten",                        dim:"D", k:"-" },
+    { id:4,  text:"Jag är direkt och rakt på sak i mina åsikter",                  dim:"D", k:"+" },
+    { id:5,  text:"Jag undviker konfrontationer och konflikter",                   dim:"D", k:"-" },
+    { id:6,  text:"Jag tar gärna ledningen i grupper",                             dim:"D", k:"+" },
+    { id:7,  text:"Jag fokuserar på resultat och prestationer",                    dim:"D", k:"+" },
+    { id:8,  text:"Jag är försiktig och undviker att ta risker",                   dim:"D", k:"-" },
+
+    // INFLUENCE (I) - 8 questions
+    { id:9,  text:"Jag är entusiastisk och energisk i sociala sammanhang",         dim:"I", k:"+" },
+    { id:10, text:"Jag övertygar och inspirerar gärna andra",                      dim:"I", k:"+" },
+    { id:11, text:"Jag är reserverad och håller mina känslor för mig själv",       dim:"I", k:"-" },
+    { id:12, text:"Jag gillar att nätverka och träffa nya människor",              dim:"I", k:"+" },
+    { id:13, text:"Jag arbetar helst ensam utan distraktioner",                    dim:"I", k:"-" },
+    { id:14, text:"Jag är optimistisk och positiv i det mesta",                    dim:"I", k:"+" },
+    { id:15, text:"Jag uttrycker mina känslor öppet",                              dim:"I", k:"+" },
+    { id:16, text:"Jag är analytisk snarare än känslomässig",                      dim:"I", k:"-" },
+
+    // STEADINESS (S) - 8 questions
+    { id:17, text:"Jag föredrar stabilitet och förutsägbarhet",                    dim:"S", k:"+" },
+    { id:18, text:"Jag är en god lyssnare och stöttar andra",                      dim:"S", k:"+" },
+    { id:19, text:"Jag gillar snabba förändringar och nya utmaningar",             dim:"S", k:"-" },
+    { id:20, text:"Jag är tålmodig och lugn under press",                          dim:"S", k:"+" },
+    { id:21, text:"Jag blir rastlös med rutinarbete",                              dim:"S", k:"-" },
+    { id:22, text:"Jag värdesätter harmoni och samarbete",                         dim:"S", k:"+" },
+    { id:23, text:"Jag är lojal och pålitlig gentemot mitt team",                  dim:"S", k:"+" },
+    { id:24, text:"Jag söker ständigt nya och spännande upplevelser",              dim:"S", k:"-" },
+
+    // CONSCIENTIOUSNESS (C) - 8 questions
+    { id:25, text:"Jag följer regler och procedurer noggrant",                     dim:"C", k:"+" },
+    { id:26, text:"Jag är noggrann och detaljorienterad",                          dim:"C", k:"+" },
+    { id:27, text:"Jag föredrar flexibilitet framför strikta regler",              dim:"C", k:"-" },
+    { id:28, text:"Jag analyserar situationer grundligt innan jag agerar",         dim:"C", k:"+" },
+    { id:29, text:"Jag tar snabba beslut baserat på känsla",                       dim:"C", k:"-" },
+    { id:30, text:"Jag uppskattar struktur och ordning",                           dim:"C", k:"+" },
+    { id:31, text:"Jag värdesätter kvalitet och precision",                        dim:"C", k:"+" },
+    { id:32, text:"Jag är spontan och improviserar gärna",                         dim:"C", k:"-" },
+];
+
+// ─────────────────────────────────────────────
+// DIMENSION DESCRIPTIONS
+// ─────────────────────────────────────────────
+const DESC = {
+    D: {
+        high: { tag:"Dominant", text:"Du är handlingskraftig, resultatfokuserad och tar gärna ledningen. Du trivs med utmaningar och fattar snabba beslut. Du är direkt och säger vad du tycker." },
+        mid:  { tag:"Balanserad", text:"Du kan vara både beslutsam och samarbetsvillig beroende på situationen. Du balanserar handling med eftertanke." },
+        low:  { tag:"Överväg­ande", text:"Du är samarbetsvillig och föredrar att arbeta i team. Du tänker noga igenom beslut och undviker onödig konflikt." }
+    },
+    I: {
+        high: { tag:"Inflytelserik", text:"Du är entusiastisk, social och inspirerande. Du kommunicerar öppet och bygger relationer naturligt. Du är optimistisk och uttrycker dina känslor fritt." },
+        mid:  { tag:"Balanserad", text:"Du kan vara både social och fokuserad. Du anpassar din kommunikationsstil efter situationen." },
+        low:  { tag:"Reserverad", text:"Du är mer reserverad och analytisk. Du föredrar fakta framför känslor och arbetar gärna självständigt." }
+    },
+    S: {
+        high: { tag:"Stabil", text:"Du är lugn, pålitlig och stöttar andra. Du värdesätter harmoni och stabilitet. Du är tålmodig och lojal mot ditt team." },
+        mid:  { tag:"Balanserad", text:"Du kombinerar stabilitet med anpassningsförmåga. Du kan hantera både rutiner och förändring." },
+        low:  { tag:"Dynamisk", text:"Du trivs med förändring och variation. Du är flexibel och anpassar dig snabbt till nya situationer." }
+    },
+    C: {
+        high: { tag:"Noggrann", text:"Du är detaljorienterad, analytisk och värdesätter kvalitet. Du följer procedurer och tänker igenom saker grundligt innan du agerar." },
+        mid:  { tag:"Balanserad", text:"Du kombinerar struktur med flexibilitet. Du kan vara både noggrann och spontan beroende på vad som behövs." },
+        low:  { tag:"Flexibel", text:"Du är spontan och flexibel. Du föredrar frihet framför strikta regler och fattar beslut baserat på intuition." }
+    }
+};
+
+function getLevel(score) {
+    if (score >= 65) return "high";
+    if (score <= 35) return "low";
+    return "mid";
+}
+
+// ─────────────────────────────────────────────
+// PROFILE TYPE GENERATOR
+// ─────────────────────────────────────────────
+function generateProfileType(scores) {
+    const dims = ["D", "I", "S", "C"];
+    const sorted = dims.sort((a, b) => scores[b] - scores[a]);
+
+    // Primary and secondary traits (score >= 60)
+    const primary = sorted.filter(d => scores[d] >= 60);
+
+    if (primary.length === 0) return "Balanserad profil";
+    if (primary.length === 1) return DIM[primary[0]].sv;
+
+    // Combine top 2
+    return primary.slice(0, 2).map(d => d).join("");
+}
+
+function generateHeadline(scores) {
+    const profile = generateProfileType(scores);
+    const traits = [];
+
+    if (scores.D >= 65) traits.push("resultatdriven");
+    if (scores.I >= 65) traits.push("inspirerande");
+    if (scores.S >= 65) traits.push("pålitlig");
+    if (scores.C >= 65) traits.push("noggrann");
+
+    if (traits.length === 0) return "En balanserad och anpassningsbar personlighet";
+    if (traits.length === 1) return `En ${traits[0]} och engagerad personlighet`;
+    const last = traits.pop();
+    return `En ${traits.join(", ")} och ${last} personlighet`;
+}
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let view = "start";
+let qIdx = 0;
+let answers = {};
+let scores = null;
+let radarChart = null;
+let consents = { data: false, ai: false, storage: true };
+let sessionId = null;
+
+// HTML escaping to prevent XSS attacks
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ─────────────────────────────────────────────
+// VIEWS
+// ─────────────────────────────────────────────
+function renderStart() {
+    return `
+    <div class="min-h-screen fade-in" style="background: linear-gradient(160deg, #FFF5F5 0%, #FFFEF0 40%, #F0FFF4 100%)">
+        <div class="px-5 py-10">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-xl"
+                     style="background: linear-gradient(135deg, #FF4444, #FFD700)">
+                    <i data-lucide="activity" class="w-10 h-10 text-white"></i>
+                </div>
+                <h1 class="text-4xl font-black text-gray-900 mb-1">${BRAND}</h1>
+                <p class="text-gray-500 font-medium">DISC Beteendeanalys</p>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-md mb-4">
+                <h2 class="text-xl font-bold text-gray-900 mb-3">Förstå ditt beteende</h2>
+                <p class="text-gray-600 text-sm leading-relaxed mb-4">
+                    DISC är ett av världens mest använda verktyg för att förstå <strong>arbetsbeteende och kommunikationsstilar</strong>.
+                    Modellen mäter fyra dimensioner: Dominans, Inflytande, Stabilitet och Konformitet.
+                </p>
+                <div class="space-y-2">
+                    ${[["32 validerade frågor","check"],["Ca 8 minuter","clock"],["GDPR-säker datahantering","shield"],["Personlig beteendeprofil","bar-chart-2"]].map(([t,ic])=>`
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="${ic}" class="w-4 h-4 text-green-600"></i>
+                        </div>
+                        <span class="text-gray-700 text-sm font-medium">${t}</span>
+                    </div>`).join("")}
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-5 shadow-md mb-4">
+                <h3 class="text-base font-bold text-gray-900 mb-3">De fyra DISC-dimensionerna</h3>
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#FFF5F5">
+                            <i data-lucide="zap" class="w-5 h-5" style="color:#FF4444"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">Dominans (D)</div>
+                            <div class="text-xs text-gray-600">Handlingskraft, resultat, utmaningar</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#FFFEF0">
+                            <i data-lucide="users" class="w-5 h-5" style="color:#FFD700"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">Inflytande (I)</div>
+                            <div class="text-xs text-gray-600">Entusiasm, social energi, kommunikation</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#F0FFF4">
+                            <i data-lucide="shield" class="w-5 h-5" style="color:#44AA44"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">Stabilitet (S)</div>
+                            <div class="text-xs text-gray-600">Lugn, pålitlighet, harmoni</div>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#F0F0FF">
+                            <i data-lucide="check-circle" class="w-5 h-5" style="color:#4444FF"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-900 text-sm">Konformitet (C)</div>
+                            <div class="text-xs text-gray-600">Noggrannhet, kvalitet, struktur</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex gap-3">
+                <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                <p class="text-amber-900 text-xs leading-relaxed">
+                    <strong>Obs:</strong> DISC mäter beteendestil i arbetssammanhang, inte personlighet eller förmågor. Det finns inga rätt eller fel profiler.
+                </p>
+            </div>
+
+            <button onclick="go('consent')"
+                class="w-full text-white py-5 rounded-2xl font-bold text-lg shadow-xl card-hover"
+                style="background: linear-gradient(135deg, #FF4444, #FFD700)">
+                Starta DISC-analys
+            </button>
+            <p class="text-center text-gray-400 text-xs mt-3">DISC · Beteendeanalys · Arbetspsykologi</p>
+
+            <div class="text-center mt-4">
+                <a href="/index.html" class="text-gray-500 text-sm hover:text-gray-700">
+                    ← Tillbaka till startsidan
+                </a>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderConsent() {
+    const ok = consents.data && consents.ai;
+    return `
+    <div class="min-h-screen bg-white slide-in-right">
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 py-4 flex items-center gap-3">
+                <button onclick="go('start')" class="p-2 -ml-2 card-hover rounded-full">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-900">Samtycke & integritet</h1>
+                    <p class="text-xs text-gray-500">GDPR-skyddad information</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 py-5 space-y-3 pb-32">
+            <p class="text-sm text-gray-600 mb-4">Vi behöver ditt samtycke innan vi kan genomföra analysen. Du kan när som helst begära att få dina uppgifter raderade.</p>
+
+            ${consentItem("data", "Databehandling", "Dina svar behandlas för att beräkna din DISC-profil.", true)}
+            ${consentItem("ai", "Analysbearbetning", "Algoritmisk analys används för att generera beteendeanalys.", true)}
+            ${consentItem("storage", "Lagring (365 dagar)", "Dina resultat sparas för att du ska kunna gå tillbaka till dem. Valfritt.", false)}
+
+            <div class="bg-gray-50 rounded-2xl p-4 text-xs text-gray-500 space-y-1">
+                <p>✓ Inga data säljs till tredje part</p>
+                <p>✓ Du har rätt till uttag och radering (Art. 15–17 GDPR)</p>
+                <p>✓ Data anonymiseras automatiskt efter lagringperioden</p>
+            </div>
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t p-4">
+            <button onclick="${ok ? "startTest()" : ""}"
+                class="w-full py-4 rounded-xl font-bold text-base transition-all ${ok ? "text-white card-hover" : "bg-gray-100 text-gray-400 cursor-not-allowed"}"
+                style="${ok ? "background:linear-gradient(135deg,#FF4444,#FFD700)" : ""}"
+                ${!ok ? "disabled" : ""}>
+                ${ok ? "Acceptera och fortsätt" : "Godkänn obligatoriska samtycken"}
+            </button>
+        </div>
+    </div>`;
+}
+
+function consentItem(id, title, desc, required) {
+    const checked = consents[id];
+    return `
+    <label class="flex items-start gap-4 bg-white border-2 rounded-2xl p-4 cursor-pointer transition-all ${checked ? "border-red-400 bg-red-50" : "border-gray-100"}">
+        <input type="checkbox" ${checked?"checked":""} onchange="toggleConsent('${id}')" />
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="font-semibold text-gray-900 text-sm">${title}</span>
+                <span class="tag text-xs ${required ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}">${required?"Obligatorisk":"Valfri"}</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">${desc}</p>
+        </div>
+    </label>`;
+}
+
+function renderQuestion() {
+    const q = QUESTIONS[qIdx];
+    const prog = ((qIdx + 1) / QUESTIONS.length) * 100;
+    const d = DIM[q.dim];
+    const LABELS = ["", "Stämmer inte alls", "Stämmer dåligt", "Neutral", "Stämmer ganska bra", "Stämmer helt"];
+
+    return `
+    <div class="min-h-screen bg-gray-50">
+        <!-- Progress header -->
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 pt-3 pb-2">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-gray-500">FRÅGA ${qIdx+1} AV ${QUESTIONS.length}</span>
+                    <span class="text-xs font-bold" style="color:${d.color}">${d.sv.toUpperCase()}</span>
+                </div>
+                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full progress-bar" style="width:${prog}%; background:linear-gradient(90deg,#FF4444,#FFD700)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question card -->
+        <div class="px-4 pt-6 pb-4">
+            <div class="rounded-3xl p-6 mb-5 shadow-md" style="background:${d.light}; border:1px solid ${d.color}22">
+                <div class="w-10 h-10 rounded-2xl flex items-center justify-center mb-3" style="background:${d.color}22">
+                    <i data-lucide="${d.icon}" class="w-5 h-5" style="color:${d.color}"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 leading-snug">${escapeHtml(q.text)}</h2>
+            </div>
+
+            <!-- Likert scale -->
+            <div class="space-y-2.5">
+                ${[5,4,3,2,1].map(v=>`
+                <button class="likert-btn ${answers[q.id]===v?"selected":""}" onclick="answer(${q.id},${v})">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 transition-all"
+                         style="background:${answers[q.id]===v ? d.color : "#f3f4f6"}; color:${answers[q.id]===v ? "white" : "#6b7280"}">
+                        ${v}
+                    </div>
+                    <span class="font-medium text-sm ${answers[q.id]===v?"text-red-900":"text-gray-700"}">${LABELS[v]}</span>
+                </button>`).join("")}
+            </div>
+        </div>
+
+        <!-- Back button -->
+        ${qIdx > 0 ? `
+        <div class="px-4 pb-6">
+            <button onclick="prevQ()" class="w-full py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold text-sm card-hover">
+                ← Föregående fråga
+            </button>
+        </div>` : ""}
+    </div>`;
+}
+
+function renderResults() {
+    const dims = ["D","I","S","C"];
+    const profileType = generateProfileType(scores);
+    const headline = generateHeadline(scores);
+
+    return `
+    <div class="min-h-screen bg-gray-50 slide-in-up pb-10">
+
+        <!-- Hero -->
+        <div class="text-white px-5 pt-10 pb-16 text-center"
+             style="background:linear-gradient(135deg,#FF4444,#FFD700,#44AA44)">
+            <div class="w-14 h-14 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <i data-lucide="star" class="w-7 h-7 text-white"></i>
+            </div>
+            <h1 class="text-3xl font-black mb-2">Din DISC-profil</h1>
+            <p class="text-white/85 text-sm font-medium capitalize mb-1">${headline}</p>
+            <div class="inline-block bg-white/20 px-4 py-2 rounded-full text-white font-bold text-lg">
+                ${profileType}
+            </div>
+        </div>
+
+        <div class="px-4 -mt-8 space-y-4">
+
+            <!-- Radar chart -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <h2 class="text-base font-bold text-gray-900 mb-1">DISC-profil</h2>
+                <p class="text-xs text-gray-500 mb-4">Din beteendestil visualiserad</p>
+                <div class="radar-container">
+                    <canvas id="radarChart" width="300" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Dimension cards -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <h2 class="text-base font-bold text-gray-900 mb-4">Dina dimensioner</h2>
+                ${dims.map(d => {
+                    const sc = scores[d];
+                    const info = DIM[d];
+                    const lvl = getLevel(sc);
+                    const desc = DESC[d][lvl];
+                    return `
+                    <div class="dim-card" style="border-left:4px solid ${info.color}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:${info.light}">
+                                    <i data-lucide="${info.icon}" class="w-4 h-4" style="color:${info.color}"></i>
+                                </div>
+                                <span class="font-bold text-gray-900 text-sm">${info.sv}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="tag" style="background:${info.light};color:${info.color}">${desc.tag}</span>
+                                <span class="font-black text-lg" style="color:${info.color}">${Math.round(sc)}</span>
+                            </div>
+                        </div>
+                        <div class="score-bar-bg mb-3">
+                            <div class="score-bar-fill dim-bar" style="width:${sc}%;background:${info.color}"></div>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">${desc.text}</p>
+                    </div>`;
+                }).join("")}
+            </div>
+
+            <!-- Key strengths -->
+            <div class="insights-card shadow-md">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="zap" class="w-5 h-5 text-yellow-300"></i>
+                    <h2 class="text-base font-bold">Dina styrkor</h2>
+                </div>
+                <ul class="space-y-2">
+                    ${buildStrengths(scores).map(s=>`
+                    <li class="flex items-start gap-2">
+                        <span class="text-yellow-300 mt-0.5">✦</span>
+                        <span class="text-white/90 text-sm">${s}</span>
+                    </li>`).join("")}
+                </ul>
+            </div>
+
+            <!-- PERSONALIZED SECTIONS -->
+            ${renderPersonalizedSections(scores)}
+
+            <!-- Scientific note -->
+            <div class="bg-white rounded-3xl p-5 shadow-md">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-sm mb-1">Om DISC-modellen</h3>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            DISC mäter beteendestil, inte personlighet eller intelligens. Modellen används av miljontals företag för att förbättra kommunikation, teamarbete och ledarskap. Alla profiler är lika värdefulla.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat with Coach -->
+            <button onclick="openChat()" class="w-full text-white py-5 rounded-2xl font-bold shadow-xl card-hover flex items-center justify-center gap-2"
+                style="background:linear-gradient(135deg,#10B981,#059669)">
+                <i data-lucide="message-square" class="w-5 h-5"></i>
+                Chatta om din DISC-profil
+            </button>
+
+            <button onclick="share()" class="w-full text-white py-5 rounded-2xl font-bold shadow-xl card-hover"
+                style="background:linear-gradient(135deg,#FF4444,#FFD700)">
+                Dela resultat
+            </button>
+            <button onclick="restart()" class="w-full py-4 rounded-2xl font-semibold bg-white text-gray-700 shadow card-hover">
+                Gör om analysen
+            </button>
+            <div class="text-center mt-4">
+                <a href="/index.html" class="text-gray-500 text-sm hover:text-gray-700">
+                    ← Tillbaka till startsidan
+                </a>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// PERSONALIZED REPORT GENERATORS
+// ─────────────────────────────────────────────
+
+function getWorkStyle(scores) {
+    let style = [];
+
+    if (scores.D >= 60) style.push("Du tar gärna ledningen och driver projekt framåt med energi och beslutsamhet");
+    if (scores.I >= 60) style.push("Du bygger relationer och skapar entusiasm i teamet");
+    if (scores.S >= 60) style.push("Du är en stabil kraft som stöttar teamet och skapar trygghet");
+    if (scores.C >= 60) style.push("Du säkerställer kvalitet och följer processer noggrant");
+
+    if (scores.D <= 40) style.push("Du föredrar att samarbeta och undviker att driva igenom saker ensam");
+    if (scores.I <= 40) style.push("Du arbetar fokuserat och analyserar situationer noggrant");
+    if (scores.S <= 40) style.push("Du trivs med förändring och nya utmaningar");
+    if (scores.C <= 40) style.push("Du är flexibel och anpassar dig snabbt till nya situationer");
+
+    return style.slice(0, 3).join(". ") + ".";
+}
+
+function getCommunicationStyle(scores) {
+    let comm = [];
+
+    if (scores.D >= 60 && scores.I >= 60) comm.push("Du kommunicerar direkt och entusiastiskt - folk vet var de har dig och du inspirerar andra");
+    else if (scores.D >= 60) comm.push("Du är direkt och fokuserar på resultat i din kommunikation");
+    else if (scores.I >= 60) comm.push("Du kommunicerar öppet och entusiastiskt, och bygger relationer genom samtal");
+
+    if (scores.S >= 60) comm.push("Du lyssnar aktivt och är lyhörd för andras känslor");
+    if (scores.C >= 60) comm.push("Du kommunicerar tydligt och precisat, med fokus på fakta och detaljer");
+
+    if (scores.D <= 40) comm.push("Du föredrar diplomati framför konfrontation");
+    if (scores.I <= 40) comm.push("Du håller dig till fakta och undviker känslomässiga argument");
+
+    return comm.slice(0, 3).join(". ") + ".";
+}
+
+function getCareerSuggestions(scores) {
+    const careers = [];
+
+    if (scores.D >= 65 && scores.I >= 65) {
+        careers.push("Säljchef eller Business Developer");
+        careers.push("Entreprenör eller Startup Founder");
+        careers.push("PR-chef eller Kommunikationsstrateg");
+    } else if (scores.D >= 65 && scores.C >= 65) {
+        careers.push("Projektledare eller Program Manager");
+        careers.push("Operations Manager");
+        careers.push("Management Consultant");
+    } else if (scores.I >= 65 && scores.S >= 65) {
+        careers.push("HR-specialist eller Recruiter");
+        careers.push("Customer Success Manager");
+        careers.push("Eventkoordinator");
+    } else if (scores.S >= 65 && scores.C >= 65) {
+        careers.push("Administratör eller Coordinator");
+        careers.push("Kvalitetsansvarig");
+        careers.push("Bibliotekarie eller Researcher");
+    } else if (scores.D >= 65) {
+        careers.push("Chef eller Team Lead");
+        careers.push("Account Manager");
+        careers.push("Strateg eller Business Analyst");
+    } else if (scores.I >= 65) {
+        careers.push("Säljare eller Account Executive");
+        careers.push("Marketing Manager");
+        careers.push("Trainer eller Coach");
+    } else if (scores.S >= 65) {
+        careers.push("Social Worker eller Terapeut");
+        careers.push("Vårdpersonal");
+        careers.push("Teamkoordinator");
+    } else if (scores.C >= 65) {
+        careers.push("Data Analyst eller Software Developer");
+        careers.push("Revisor eller Controller");
+        careers.push("Quality Assurance Specialist");
+    } else {
+        careers.push("Projektledare");
+        careers.push("Konsult");
+        careers.push("Operations Specialist");
+    }
+
+    return careers.slice(0, 5);
+}
+
+function getTeamRole(scores) {
+    let role = [];
+
+    if (scores.D >= 60) role.push("Du driver projektet framåt och fattar snabba beslut när teamet behöver riktning");
+    if (scores.I >= 60) role.push("Du skapar energi och entusiasm som smittar av sig på hela teamet");
+    if (scores.S >= 60) role.push("Du är teamets klippa som lyssnar, stöttar och håller samman gruppen");
+    if (scores.C >= 60) role.push("Du säkerställer att teamet följer processer och levererar hög kvalitet");
+
+    if (role.length === 0) role.push("Du har en balanserad profil som gör dig till en flexibel teammedlem");
+
+    return role.join(". ") + ".";
+}
+
+function getDevelopmentAreas(scores) {
+    const dev = [];
+
+    if (scores.D >= 70) {
+        dev.push("**Lyssna mer:** Ta dig tid att höra andras perspektiv innan du fattar beslut");
+    }
+    if (scores.I >= 70) {
+        dev.push("**Fokus:** Öva på att slutföra projekt innan du startar nya spännande initiativ");
+    }
+    if (scores.S >= 70) {
+        dev.push("**Beslutsamhet:** Träna på att ta snabbare beslut även när du inte har all information");
+    }
+    if (scores.C >= 70) {
+        dev.push("**Flexibilitet:** Lär dig när 'tillräckligt bra' är bättre än perfekt");
+    }
+
+    if (scores.D <= 30) {
+        dev.push("**Självhävdelse:** Öva på att säga din åsikt tydligt även i svåra situationer");
+    }
+    if (scores.I <= 30) {
+        dev.push("**Networking:** Bygg sociala kontakter - de är värdefulla även för analytiska roller");
+    }
+    if (scores.S <= 30) {
+        dev.push("**Tålamod:** Träna på att ge andra tid och utrymme att komma ikapp");
+    }
+    if (scores.C <= 30) {
+        dev.push("**Noggrannhet:** Implementera checklistor för kritiska uppgifter där kvalitet är avgörande");
+    }
+
+    return dev.length > 0 ? dev.slice(0, 3) : ["Du har en väl balanserad profil. Fortsätt utveckla dina befintliga styrkor!"];
+}
+
+function renderPersonalizedSections(scores) {
+    const workStyle = getWorkStyle(scores);
+    const commStyle = getCommunicationStyle(scores);
+    const careers = getCareerSuggestions(scores);
+    const teamRole = getTeamRole(scores);
+    const development = getDevelopmentAreas(scores);
+
+    return `
+        <!-- Work Style -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="briefcase" class="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din arbetsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${workStyle}</p>
+        </div>
+
+        <!-- Communication -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="message-circle" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din kommunikationsstil</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${commStyle}</p>
+        </div>
+
+        <!-- Team Role -->
+        <div class="bg-white rounded-3xl p-5 shadow-md">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="users" class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Din roll i teamet</h2>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${teamRole}</p>
+        </div>
+
+        <!-- Career Fit -->
+        <div class="bg-gradient-to-br from-red-50 to-yellow-50 rounded-3xl p-5 shadow-md border border-red-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="rocket" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Roller som passar dig</h2>
+            </div>
+            <ul class="space-y-2">
+                ${careers.map(c => `
+                <li class="flex items-start gap-2">
+                    <span class="text-red-600 mt-1">→</span>
+                    <span class="text-sm text-gray-800 font-medium">${c}</span>
+                </li>`).join("")}
+            </ul>
+            <p class="text-xs text-gray-600 mt-3 italic">Baserat på din unika DISC-profil</p>
+        </div>
+
+        <!-- Development -->
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-5 shadow-md border border-green-100">
+            <div class="flex items-start gap-3 mb-3">
+                <i data-lucide="trending-up" class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"></i>
+                <h2 class="text-base font-bold text-gray-900">Utvecklingsområden</h2>
+            </div>
+            <div class="space-y-3">
+                ${development.map(d => {
+                    const parts = d.split(":");
+                    return `
+                    <div class="text-sm">
+                        ${parts.length > 1
+                            ? `<span class="font-bold text-gray-900">${parts[0]}:</span><span class="text-gray-700">${parts[1]}</span>`
+                            : `<span class="text-gray-700">${d}</span>`
+                        }
+                    </div>`;
+                }).join("")}
+            </div>
+        </div>
+    `;
+}
+
+// ─────────────────────────────────────────────
+// STRENGTHS BUILDER
+// ─────────────────────────────────────────────
+function buildStrengths(scores) {
+    const s = [];
+    if (scores.D >= 60) s.push("Du tar snabba beslut och driver resultat - en naturlig ledare.");
+    if (scores.I >= 60) s.push("Du inspirerar andra med din entusiasm och bygger starka relationer.");
+    if (scores.S >= 60) s.push("Du är pålitlig och skapar trygghet i teamet genom din stabilitet.");
+    if (scores.C >= 60) s.push("Du levererar hög kvalitet genom noggrannhet och systematiskt arbete.");
+
+    if (scores.D <= 40) s.push("Du är samarbetsvillig och diplomatisk i dina relationer.");
+    if (scores.I <= 40) s.push("Du är analytisk och fokuserad - du låter dig inte distraheras av känslor.");
+    if (scores.S <= 40) s.push("Du är flexibel och trivs med förändring och nya utmaningar.");
+    if (scores.C <= 40) s.push("Du är spontan och kan snabbt anpassa dig till nya situationer.");
+
+    return s.length > 0 ? s.slice(0, 4) : ["Du har en balanserad profil som gör dig anpassningsbar."];
+}
+
+// ─────────────────────────────────────────────
+// SCORING
+// ─────────────────────────────────────────────
+function calcScores() {
+    const raw = { D:0, I:0, S:0, C:0 };
+    const counts = { D:0, I:0, S:0, C:0 };
+
+    QUESTIONS.forEach(q => {
+        let v = answers[q.id] || 3;
+        if (q.k === "-") v = 6 - v;
+        raw[q.dim] += v;
+        counts[q.dim]++;
+    });
+
+    const result = {};
+    Object.keys(raw).forEach(d => {
+        const mean = raw[d] / counts[d]; // 1–5
+        result[d] = Math.round(((mean - 1) / 4) * 100); // 0–100
+    });
+    return result;
+}
+
+// ─────────────────────────────────────────────
+// CHART
+// ─────────────────────────────────────────────
+function drawChart(scores) {
+    setTimeout(() => {
+        const canvas = document.getElementById("radarChart");
+        if (!canvas) return;
+        if (radarChart) radarChart.destroy();
+
+        radarChart = new Chart(canvas, {
+            type: "radar",
+            data: {
+                labels: ["Dominans", "Inflytande", "Stabilitet", "Konformitet"],
+                datasets: [{
+                    label: "Din profil",
+                    data: ["D","I","S","C"].map(d => scores[d]),
+                    backgroundColor: "rgba(255,68,68,0.15)",
+                    borderColor: "#FF4444",
+                    borderWidth: 2.5,
+                    pointBackgroundColor: ["#FF4444","#FFD700","#44AA44","#4444FF"],
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    r: {
+                        min: 0, max: 100,
+                        ticks: { stepSize: 25, font: { size: 9 }, backdropColor: "transparent" },
+                        pointLabels: { font: { size: 10, weight: "bold" }, color: "#374151" },
+                        grid: { color: "#e5e7eb" },
+                        angleLines: { color: "#e5e7eb" }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }, 150);
+}
+
+// ─────────────────────────────────────────────
+// CHAT VIEW & LOGIC
+// ─────────────────────────────────────────────
+
+let chatHistory = [];
+let isChatLoading = false;
+let userId = null;
+
+function renderChat() {
+    return `
+    <div class="min-h-screen bg-gray-50 slide-in-right flex flex-col">
+        <!-- Header -->
+        <div class="sticky top-0 bg-white border-b z-10">
+            <div class="px-4 py-4 flex items-center gap-3">
+                <button onclick="view='results'; render();" class="p-2 -ml-2 card-hover rounded-full">
+                    <i data-lucide="arrow-left" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <div class="flex-1">
+                    <h1 class="text-lg font-bold text-gray-900">DISC-coach</h1>
+                    <p class="text-xs text-gray-500">Fråga om din profil och beteendeutveckling</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages container -->
+        <div id="chatMessages" class="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-32">
+            ${chatHistory.length === 0 ? `
+            <!-- Welcome message -->
+            <div class="bg-gradient-to-br from-red-50 to-yellow-50 rounded-3xl p-5 border border-red-100">
+                <div class="flex items-start gap-3 mb-3">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-red-600 flex-shrink-0"></i>
+                    <div>
+                        <h3 class="font-bold text-gray-900 mb-2">Välkommen till din DISC-coach!</h3>
+                        <p class="text-sm text-gray-700 mb-3">Jag känner till din DISC-profil och kan hjälpa dig med:</p>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li class="flex items-start gap-2">
+                                <span class="text-red-600">✓</span>
+                                <span>Tolka och förstå dina resultat djupare</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-red-600">✓</span>
+                                <span>Arbetsrollsråd baserad på din profil</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-red-600">✓</span>
+                                <span>Kommunikationstips för olika DISC-typer</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-red-600">✓</span>
+                                <span>Teamdynamik och samarbetsstrategier</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-white/50 rounded-xl p-3 mt-3">
+                    <p class="text-xs text-gray-600 italic">
+                        <strong>Din profil:</strong> D: ${Math.round(scores.D)},
+                        I: ${Math.round(scores.I)},
+                        S: ${Math.round(scores.S)},
+                        C: ${Math.round(scores.C)}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-600 mt-3 font-medium">Ställ mig en fråga för att komma igång! 👇</p>
+            </div>
+            ` : ''}
+
+            ${chatHistory.map((msg, idx) => {
+                const isUser = msg.role === 'user';
+                return `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'} fade-in">
+                    <div class="max-w-[85%] ${isUser ? 'bg-red-600 text-white' : 'bg-white border border-gray-200'} rounded-2xl p-4 shadow-sm">
+                        ${!isUser ? `<div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="bot" class="w-4 h-4 text-red-600"></i>
+                            <span class="text-xs font-semibold text-gray-500">DISC-coach</span>
+                        </div>` : ''}
+                        <p class="text-sm ${isUser ? 'text-white' : 'text-gray-800'} leading-relaxed whitespace-pre-wrap">${escapeHtml(msg.content)}</p>
+                    </div>
+                </div>`;
+            }).join('')}
+
+            ${isChatLoading ? `
+            <div class="flex justify-start fade-in">
+                <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-red-600 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-red-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 bg-red-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+        </div>
+
+        <!-- Input area -->
+        <div class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t p-4">
+            <form onsubmit="sendChatMessage(event)" class="flex gap-2">
+                <input
+                    type="text"
+                    id="chatInput"
+                    placeholder="Skriv din fråga här..."
+                    class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:outline-none text-sm"
+                    ${isChatLoading ? 'disabled' : ''}
+                />
+                <button
+                    type="submit"
+                    class="px-5 py-3 rounded-xl font-bold text-white card-hover ${isChatLoading ? 'bg-gray-300' : 'bg-red-600'}"
+                    ${isChatLoading ? 'disabled' : ''}
+                >
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </form>
+            <p class="text-xs text-gray-500 mt-2 text-center">
+                💡 Tips: Fråga om "Hur arbetar jag bäst i team?" eller "Vilka roller passar min profil?"
+            </p>
+        </div>
+    </div>`;
+}
+
+function openChat() {
+    view = "chat";
+    render();
+    setTimeout(() => {
+        const input = document.getElementById('chatInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+async function sendChatMessage(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message || isChatLoading) return;
+
+    chatHistory.push({ role: 'user', content: message });
+    input.value = '';
+    isChatLoading = true;
+    render();
+
+    setTimeout(() => {
+        const container = document.getElementById('chatMessages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }, 50);
+
+    try {
+        const response = await callChatAPI(message);
+        chatHistory.push({ role: 'assistant', content: response });
+    } catch (error) {
+        chatHistory.push({
+            role: 'assistant',
+            content: 'Tyvärr uppstod ett fel. Försök igen om en stund.'
+        });
+    } finally {
+        isChatLoading = false;
+        render();
+
+        setTimeout(() => {
+            const container = document.getElementById('chatMessages');
+            if (container) container.scrollTop = container.scrollHeight;
+        }, 50);
+    }
+}
+
+async function callChatAPI(message) {
+    if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    const history = chatHistory
+        .filter(msg => msg.role !== 'user' || msg.content !== message)
+        .map(msg => ({
+            role: msg.role,
+            content: msg.content
+        }));
+
+    try {
+        const response = await fetch('/disc/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                message: message,
+                disc_scores: scores,
+                conversation_history: history,
+                session_id: sessionId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response;
+    } catch (error) {
+        console.error('Chat API error:', error);
+        return mockChatFallback(message, scores);
+    }
+}
+
+function mockChatFallback(message, scores) {
+    const lowerMsg = message.toLowerCase();
+
+    if (lowerMsg.includes('jobb') || lowerMsg.includes('roll')) {
+        const careers = getCareerSuggestions(scores);
+        return `Baserat på din DISC-profil passar dessa roller dig:\n\n${careers.map(c => `• ${c}`).join('\n')}\n\nVill du veta mer om någon av dessa?`;
+    }
+
+    if (lowerMsg.includes('team') || lowerMsg.includes('samarbete')) {
+        const teamRole = getTeamRole(scores);
+        return `I team:\n\n${teamRole}\n\nVill du veta mer om hur du kan arbeta med olika DISC-typer?`;
+    }
+
+    return `Tack för din fråga! Baserat på din DISC-profil (D:${Math.round(scores.D)}, I:${Math.round(scores.I)}, S:${Math.round(scores.S)}, C:${Math.round(scores.C)}) kan jag hjälpa dig med karriärval, teamdynamik, eller kommunikationstips. Vad vill du veta mer om?`;
+}
+
+// CONTROLS
+// ─────────────────────────────────────────────
+function go(v) { view = v; render(); }
+
+function toggleConsent(id) {
+    consents[id] = !consents[id];
+    render();
+}
+
+async function startTest() {
+    qIdx = 0;
+    answers = {};
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+    // Initialize session with backend
+    try {
+        const response = await fetch('/disc/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                consents: consents
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            sessionId = data.session_id;
+        }
+    } catch (error) {
+        console.error('Failed to initialize session:', error);
+    }
+
+    view = "question";
+    render();
+}
+
+function answer(id, val) {
+    answers[id] = val;
+    setTimeout(() => {
+        if (qIdx < QUESTIONS.length - 1) {
+            qIdx++;
+            render();
+        } else {
+            scores = calcScores();
+
+            // Send results to backend
+            sendResultsToBackend();
+
+            view = "results";
+            render();
+        }
+    }, 280);
+}
+
+async function sendResultsToBackend() {
+    try {
+        await fetch('/disc/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                session_id: sessionId,
+                answers: answers,
+                scores: scores
+            })
+        });
+    } catch (error) {
+        console.error('Failed to send results:', error);
+    }
+}
+
+function prevQ() {
+    if (qIdx > 0) { qIdx--; render(); }
+}
+
+function restart() {
+    answers = {};
+    scores = null;
+    qIdx = 0;
+    chatHistory = [];
+    view = "start";
+    render();
+}
+
+function share() {
+    const dims = ["D","I","S","C"];
+    const lines = dims.map(d => `${DIM[d].sv}: ${Math.round(scores[d])}/100`).join("\n");
+    const profileType = generateProfileType(scores);
+    const text = `Min ${BRAND} DISC-profil: ${profileType}\n\n${lines}\n\nGör analysen på persona.app`;
+
+    if (navigator.share) {
+        navigator.share({ title: "Min DISC-profil", text });
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Kopierat till urklipp! ✓");
+        });
+    } else {
+        alert(text);
+    }
+}
+
+// ─────────────────────────────────────────────
+// RENDER ENGINE
+// ─────────────────────────────────────────────
+
+function render() {
+    const app = document.getElementById("app");
+    if (view === "start")     app.innerHTML = renderStart();
+    if (view === "consent")   app.innerHTML = renderConsent();
+    if (view === "question")  app.innerHTML = renderQuestion();
+    if (view === "chat")      app.innerHTML = renderChat();
+    if (view === "results") {
+        app.innerHTML = renderResults();
+        drawChart(scores);
+    }
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+render();
+</script>
+</body>
+</html>

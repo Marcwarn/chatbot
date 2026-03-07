@@ -344,6 +344,7 @@
             <button class="tab-button active" onclick="switchTab('dashboard')">Dashboard</button>
             <button class="tab-button" onclick="switchTab('users')">Användare</button>
             <button class="tab-button" onclick="switchTab('assessments')">Assessments</button>
+            <button class="tab-button" onclick="switchTab('analytics')">Analytics</button>
             <button class="tab-button" onclick="switchTab('config')">Konfiguration</button>
         </div>
 
@@ -354,6 +355,21 @@
                     <h3>Totalt antal assessments</h3>
                     <div class="value" id="totalAssessments">-</div>
                     <div class="label">Alla tider</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Big Five</h3>
+                    <div class="value" id="bigFiveCount">-</div>
+                    <div class="label">Assessments</div>
+                </div>
+                <div class="stat-card">
+                    <h3>DISC</h3>
+                    <div class="value" id="discCount">-</div>
+                    <div class="label">Assessments</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Mest populär</h3>
+                    <div class="value" id="mostPopular">-</div>
+                    <div class="label">Assessment-typ</div>
                 </div>
                 <div class="stat-card">
                     <h3>Unika användare</h3>
@@ -372,8 +388,8 @@
                 </div>
             </div>
 
-            <div class="data-table">
-                <h2 style="padding: 20px;">Genomsnittliga dimensionsscores</h2>
+            <div class="data-table" style="margin-bottom: 20px;">
+                <h2 style="padding: 20px;">Genomsnittliga Big Five-scores</h2>
                 <div style="padding: 20px;">
                     <div class="dimension-bar">
                         <span class="dimension-label">Extraversion</span>
@@ -412,23 +428,72 @@
                     </div>
                 </div>
             </div>
+
+            <div class="data-table">
+                <h2 style="padding: 20px;">Genomsnittliga DISC-scores</h2>
+                <div style="padding: 20px;">
+                    <div class="dimension-bar">
+                        <span class="dimension-label">Dominance (D)</span>
+                        <div class="bar-container">
+                            <div class="bar-fill" id="avgD" style="width: 0%; background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);"></div>
+                            <span class="bar-value" id="avgD-value">-</span>
+                        </div>
+                    </div>
+                    <div class="dimension-bar">
+                        <span class="dimension-label">Influence (I)</span>
+                        <div class="bar-container">
+                            <div class="bar-fill" id="avgI" style="width: 0%; background: linear-gradient(90deg, #f39c12 0%, #d68910 100%);"></div>
+                            <span class="bar-value" id="avgI-value">-</span>
+                        </div>
+                    </div>
+                    <div class="dimension-bar">
+                        <span class="dimension-label">Steadiness (S)</span>
+                        <div class="bar-container">
+                            <div class="bar-fill" id="avgS" style="width: 0%; background: linear-gradient(90deg, #27ae60 0%, #229954 100%);"></div>
+                            <span class="bar-value" id="avgS-value">-</span>
+                        </div>
+                    </div>
+                    <div class="dimension-bar">
+                        <span class="dimension-label">Conscientiousness (C)</span>
+                        <div class="bar-container">
+                            <div class="bar-fill" id="avgC-disc" style="width: 0%; background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);"></div>
+                            <span class="bar-value" id="avgC-disc-value">-</span>
+                        </div>
+                    </div>
+                    <div id="discProfileDistribution" style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 10px;">Top DISC-profiler</h3>
+                        <div id="discProfiles">Inga DISC-assessments än</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Users Tab -->
         <div id="users-tab" class="tab-content">
+            <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px;">
+                <label style="margin-right: 10px; font-weight: 600;">Filtrera efter typ:</label>
+                <select id="userTypeFilter" onchange="filterUsers()" style="padding: 8px; border-radius: 5px; border: 2px solid #e0e0e0;">
+                    <option value="">Alla</option>
+                    <option value="big_five">Big Five</option>
+                    <option value="disc">DISC</option>
+                </select>
+            </div>
             <div class="data-table">
                 <table>
                     <thead>
                         <tr>
                             <th>User ID</th>
-                            <th>Assessments</th>
+                            <th>Totalt</th>
+                            <th>Big Five</th>
+                            <th>DISC</th>
+                            <th>Senaste typ</th>
                             <th>Senaste aktivitet</th>
                             <th>Chat-profil</th>
                             <th>Åtgärder</th>
                         </tr>
                     </thead>
                     <tbody id="usersTableBody">
-                        <tr><td colspan="5" class="empty-state">Laddar...</td></tr>
+                        <tr><td colspan="8" class="empty-state">Laddar...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -436,21 +501,81 @@
 
         <!-- Assessments Tab -->
         <div id="assessments-tab" class="tab-content">
+            <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px;">
+                <label style="margin-right: 10px; font-weight: 600;">Filtrera efter typ:</label>
+                <select id="assessmentTypeFilter" onchange="filterAssessments()" style="padding: 8px; border-radius: 5px; border: 2px solid #e0e0e0;">
+                    <option value="">Alla</option>
+                    <option value="big_five">Big Five</option>
+                    <option value="disc">DISC</option>
+                </select>
+            </div>
             <div class="data-table">
                 <table>
                     <thead>
                         <tr>
                             <th>Assessment ID</th>
                             <th>User ID</th>
+                            <th>Typ</th>
                             <th>Slutförd</th>
                             <th>Språk</th>
                             <th>Åtgärder</th>
                         </tr>
                     </thead>
                     <tbody id="assessmentsTableBody">
-                        <tr><td colspan="5" class="empty-state">Laddar...</td></tr>
+                        <tr><td colspan="6" class="empty-state">Laddar...</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Big Five vs DISC</h3>
+                    <div id="comparisonChart" style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-around; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #667eea;" id="bfPercentage">-</div>
+                                <div style="color: #666; margin-top: 5px;">Big Five</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #f39c12;" id="discPercentage">-</div>
+                                <div style="color: #666; margin-top: 5px;">DISC</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Användarpreferenser</h3>
+                    <div id="userPreferences" style="margin-top: 15px; font-size: 14px; color: #666;">
+                        Laddar...
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Genomförande-rate</h3>
+                    <div id="completionRates" style="margin-top: 15px;">
+                        <div style="margin-bottom: 10px;">
+                            <strong>Big Five:</strong> <span id="bfCompletionRate">-</span>%
+                        </div>
+                        <div>
+                            <strong>DISC:</strong> <span id="discCompletionRate">-</span>%
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h3>Aktivitet senaste 7 dagar</h3>
+                    <div id="last7dActivity" style="margin-top: 15px; font-size: 14px; color: #666;">
+                        Laddar...
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-table" style="margin-top: 20px;">
+                <h2 style="padding: 20px;">Tidsserie - Senaste 30 dagarna</h2>
+                <div id="timeSeriesContainer" style="padding: 20px; max-height: 300px; overflow-y: auto;">
+                    Laddar...
+                </div>
             </div>
         </div>
 
@@ -608,6 +733,7 @@
             if (tabName === 'dashboard') loadDashboard();
             else if (tabName === 'users') loadUsers();
             else if (tabName === 'assessments') loadAssessments();
+            else if (tabName === 'analytics') loadAnalytics();
             else if (tabName === 'config') loadConfig();
         }
 
@@ -623,22 +749,78 @@
                 document.getElementById('totalUsers').textContent = data.total_users;
                 document.getElementById('assessments24h').textContent = data.assessments_last_24h;
                 document.getElementById('totalChatMessages').textContent = data.total_chat_messages;
+                document.getElementById('bigFiveCount').textContent = data.big_five_count;
+                document.getElementById('discCount').textContent = data.disc_count;
 
-                // Update dimension bars
+                // Display most popular type
+                const typeNames = {
+                    'big_five': 'Big Five',
+                    'disc': 'DISC',
+                    'none': 'Ingen',
+                    'unknown': 'Okänd'
+                };
+                document.getElementById('mostPopular').textContent = typeNames[data.most_popular_type] || data.most_popular_type;
+
+                // Update Big Five dimension bars
                 const dims = ['E', 'A', 'C', 'N', 'O'];
                 dims.forEach(dim => {
                     const value = Math.round(data.top_dimensions[dim]);
                     document.getElementById(`avg${dim}`).style.width = value + '%';
                     document.getElementById(`avg${dim}-value`).textContent = value;
                 });
+
+                // Load DISC stats
+                await loadDiscStats();
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
             }
         }
 
-        async function loadUsers() {
+        async function loadDiscStats() {
             try {
-                const response = await fetch('/api/admin/users', {
+                const response = await fetch('/api/admin/stats/disc', {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+
+                const data = await response.json();
+
+                // Update DISC dimension bars
+                const discDims = ['D', 'I', 'S'];
+                discDims.forEach(dim => {
+                    const value = Math.round(data.avg_scores[dim]);
+                    document.getElementById(`avg${dim}`).style.width = value + '%';
+                    document.getElementById(`avg${dim}-value`).textContent = value;
+                });
+
+                // C dimension (different ID to avoid conflict with Big Five C)
+                const cValue = Math.round(data.avg_scores['C']);
+                document.getElementById('avgC-disc').style.width = cValue + '%';
+                document.getElementById('avgC-disc-value').textContent = cValue;
+
+                // Display top DISC profiles
+                const profilesDiv = document.getElementById('discProfiles');
+                if (data.dominant_profiles && data.dominant_profiles.length > 0) {
+                    profilesDiv.innerHTML = data.dominant_profiles.map(p =>
+                        `<div style="margin: 5px 0;">
+                            <strong>${escapeHtml(p.profile)}:</strong> ${p.count} (${p.percentage}%)
+                        </div>`
+                    ).join('');
+                } else {
+                    profilesDiv.textContent = 'Inga DISC-assessments än';
+                }
+            } catch (error) {
+                console.error('Failed to load DISC stats:', error);
+            }
+        }
+
+        async function loadUsers(filterType = '') {
+            try {
+                let url = '/api/admin/users';
+                if (filterType) {
+                    url += `?assessment_type=${filterType}`;
+                }
+
+                const response = await fetch(url, {
                     headers: {'Authorization': `Bearer ${authToken}`}
                 });
 
@@ -646,14 +828,24 @@
                 const tbody = document.getElementById('usersTableBody');
 
                 if (users.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Inga användare än</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Inga användare än</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = users.map(user => `
+                tbody.innerHTML = users.map(user => {
+                    const typeLabels = {
+                        'big_five': 'Big Five',
+                        'disc': 'DISC',
+                        null: '-'
+                    };
+
+                    return `
                     <tr>
                         <td>${escapeHtml(user.user_id.substring(0, 20))}...</td>
                         <td>${escapeHtml(String(user.assessments_count))}</td>
+                        <td>${escapeHtml(String(user.big_five_count))}</td>
+                        <td>${escapeHtml(String(user.disc_count))}</td>
+                        <td>${typeLabels[user.last_assessment_type] || '-'}</td>
                         <td>${user.last_activity ? escapeHtml(new Date(user.last_activity).toLocaleString('sv-SE')) : 'Aldrig'}</td>
                         <td>${user.has_chat_profile ? '✅' : '❌'}</td>
                         <td>
@@ -661,7 +853,7 @@
                             <button class="action-button btn-delete" data-user-id="${escapeHtml(user.user_id)}">Radera</button>
                         </td>
                     </tr>
-                `).join('');
+                `}).join('');
 
                 // Use event delegation instead of inline onclick
                 tbody.querySelectorAll('.btn-export').forEach(btn => {
@@ -675,9 +867,19 @@
             }
         }
 
-        async function loadAssessments() {
+        function filterUsers() {
+            const filterValue = document.getElementById('userTypeFilter').value;
+            loadUsers(filterValue);
+        }
+
+        async function loadAssessments(filterType = '') {
             try {
-                const response = await fetch('/api/admin/assessments', {
+                let url = '/api/admin/assessments';
+                if (filterType) {
+                    url += `?assessment_type=${filterType}`;
+                }
+
+                const response = await fetch(url, {
                     headers: {'Authorization': `Bearer ${authToken}`}
                 });
 
@@ -685,29 +887,43 @@
                 const tbody = document.getElementById('assessmentsTableBody');
 
                 if (assessments.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Inga assessments än</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Inga assessments än</td></tr>';
                     return;
                 }
+
+                const typeLabels = {
+                    'big_five': 'Big Five',
+                    'disc': 'DISC',
+                    'jung_mbti': 'Jung/MBTI',
+                    'comprehensive': 'Komplett',
+                    'unknown': 'Okänd'
+                };
 
                 tbody.innerHTML = assessments.map(a => `
                     <tr>
                         <td>${escapeHtml(a.assessment_id.substring(0, 20))}...</td>
                         <td>${escapeHtml(a.user_id.substring(0, 20))}...</td>
+                        <td><span style="padding: 4px 8px; background: ${a.assessment_type === 'big_five' ? '#e3f2fd' : '#fff3e0'}; border-radius: 12px; font-size: 12px; font-weight: 600;">${typeLabels[a.assessment_type] || a.assessment_type}</span></td>
                         <td>${escapeHtml(new Date(a.completed_at).toLocaleString('sv-SE'))}</td>
                         <td>${escapeHtml(a.language.toUpperCase())}</td>
                         <td>
-                            <button class="action-button btn-view" data-assessment-id="${escapeHtml(a.assessment_id)}">Visa</button>
+                            <button class="action-button btn-view" data-assessment-id="${escapeHtml(a.assessment_id)}" data-assessment-type="${escapeHtml(a.assessment_type)}">Visa</button>
                         </td>
                     </tr>
                 `).join('');
 
                 // Event delegation for view buttons
                 tbody.querySelectorAll('.btn-view').forEach(btn => {
-                    btn.addEventListener('click', () => viewAssessment(btn.dataset.assessmentId));
+                    btn.addEventListener('click', () => viewAssessment(btn.dataset.assessmentId, btn.dataset.assessmentType));
                 });
             } catch (error) {
                 console.error('Failed to load assessments:', error);
             }
+        }
+
+        function filterAssessments() {
+            const filterValue = document.getElementById('assessmentTypeFilter').value;
+            loadAssessments(filterValue);
         }
 
         async function loadConfig() {
@@ -776,8 +992,95 @@
             }
         }
 
-        function viewAssessment(assessmentId) {
-            alert(`Visar assessment: ${assessmentId}\n\nDenna funktion kan utökas med en modal som visar detaljerade resultat.`);
+        async function loadAnalytics() {
+            try {
+                // Load comparison stats
+                const compResponse = await fetch('/api/admin/stats/comparison', {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+                const compData = await compResponse.json();
+
+                document.getElementById('bfPercentage').textContent = compData.big_five.percentage + '%';
+                document.getElementById('discPercentage').textContent = compData.disc.percentage + '%';
+
+                // Load user demographics
+                const demoResponse = await fetch('/api/admin/stats/users/demographics', {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+                const demoData = await demoResponse.json();
+
+                const prefDiv = document.getElementById('userPreferences');
+                prefDiv.innerHTML = `
+                    <div><strong>Totalt användare:</strong> ${demoData.total_users}</div>
+                    <div><strong>Föredrar Big Five:</strong> ${demoData.preference_distribution.big_five || 0}</div>
+                    <div><strong>Föredrar DISC:</strong> ${demoData.preference_distribution.disc || 0}</div>
+                    <div><strong>Båda typerna:</strong> ${demoData.users_with_both_types}</div>
+                `;
+
+                // Load completion rates
+                const funnelResponse = await fetch('/api/admin/stats/conversion-funnel', {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+                const funnelData = await funnelResponse.json();
+
+                document.getElementById('bfCompletionRate').textContent = funnelData.big_five.completion_rate;
+                document.getElementById('discCompletionRate').textContent = funnelData.disc.completion_rate;
+
+                // Load time series
+                const timeResponse = await fetch('/api/admin/stats/time-series?days=30', {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+                const timeData = await timeResponse.json();
+
+                // Display last 7 days summary
+                const last7d = timeData.data_points.slice(-7);
+                const last7dDiv = document.getElementById('last7dActivity');
+                const bf7d = last7d.reduce((sum, d) => sum + d.big_five, 0);
+                const disc7d = last7d.reduce((sum, d) => sum + d.disc, 0);
+
+                last7dDiv.innerHTML = `
+                    <div><strong>Big Five:</strong> ${bf7d} assessments</div>
+                    <div><strong>DISC:</strong> ${disc7d} assessments</div>
+                    <div style="margin-top: 5px; color: #999;">Totalt: ${bf7d + disc7d}</div>
+                `;
+
+                // Display time series table
+                const timeSeriesDiv = document.getElementById('timeSeriesContainer');
+                if (timeData.data_points.length === 0) {
+                    timeSeriesDiv.textContent = 'Ingen data tillgänglig';
+                } else {
+                    timeSeriesDiv.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="padding: 10px; text-align: left;">Datum</th>
+                                    <th style="padding: 10px; text-align: center;">Big Five</th>
+                                    <th style="padding: 10px; text-align: center;">DISC</th>
+                                    <th style="padding: 10px; text-align: center;">Totalt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${timeData.data_points.slice(-10).reverse().map(d => `
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 8px;">${escapeHtml(d.date)}</td>
+                                        <td style="padding: 8px; text-align: center;">${d.big_five}</td>
+                                        <td style="padding: 8px; text-align: center;">${d.disc}</td>
+                                        <td style="padding: 8px; text-align: center; font-weight: 600;">${d.big_five + d.disc + d.other}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+        }
+
+        function viewAssessment(assessmentId, assessmentType) {
+            const typeLabel = assessmentType === 'big_five' ? 'Big Five' :
+                            assessmentType === 'disc' ? 'DISC' : assessmentType;
+            alert(`Visar ${typeLabel} assessment: ${assessmentId}\n\nDenna funktion kan utökas med en modal som visar detaljerade resultat.`);
         }
 
         // Handle enter key in password field
