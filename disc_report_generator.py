@@ -359,10 +359,10 @@ class DISCReport:
         if self.language == "sv":
             return f"""**Samarbete med andra DISC-stilar:**
 
-- **Med D-typer**: Var direkt, fokusera på resultat, undvik långsam process
-- **Med I-typer**: Var positiv och social, ge utrymme för idéer och relation
-- **Med S-typer**: Var tålmodig, ge tid för anpassning, värdera stabilitet
-- **Med C-typer**: Var förberedd med fakta, ge tid för analys, respektera processer
+- **Med D-typer (Röd)**: Var direkt, fokusera på resultat, undvik långsam process
+- **Med I-typer (Gul)**: Var positiv och social, ge utrymme för idéer och relation
+- **Med S-typer (Grön)**: Var tålmodig, ge tid för anpassning, värdera stabilitet
+- **Med C-typer (Blå)**: Var förberedd med fakta, ge tid för analys, respektera processer
 
 **Din roll i team**: {self._get_team_role()}
 
@@ -370,10 +370,10 @@ class DISCReport:
         else:
             return f"""**Collaboration with other DISC styles:**
 
-- **With D-types**: Be direct, focus on results, avoid slow process
-- **With I-types**: Be positive and social, give room for ideas and relationship
-- **With S-types**: Be patient, give time for adaptation, value stability
-- **With C-types**: Be prepared with facts, give time for analysis, respect processes
+- **With D-types (Red)**: Be direct, focus on results, avoid slow process
+- **With I-types (Yellow)**: Be positive and social, give room for ideas and relationship
+- **With S-types (Green)**: Be patient, give time for adaptation, value stability
+- **With C-types (Blue)**: Be prepared with facts, give time for analysis, respect processes
 
 **Your role in teams**: {self._get_team_role()}
 
@@ -413,63 +413,130 @@ def generate_personalized_disc_insights(
     anthropic_client: Optional[Anthropic] = None
 ) -> Optional[Dict]:
     """
-    Generate AI-powered personalized insights using Claude
-
-    Args:
-        profile: DISCProfile object
-        language: "sv" or "en"
-        anthropic_client: Anthropic API client
-
-    Returns:
-        Dict with personalized insights or None if not available
+    Generate AI-powered personalized insights using Claude with deep DISC knowledge
     """
     if not anthropic_client:
         return None
 
     scores = profile.scores.to_dict()
     profile_code = profile.profile_code
+    d = scores['dominance']
+    i = scores['influence']
+    s = scores['steadiness']
+    c = scores['conscientiousness']
 
-    prompt = f"""Du är en expert DISC-coach med 20+ års erfarenhet. Skapa en DJUPT personlig DISC-rapport på {"svenska" if language == "sv" else "English"}.
+    # Build descriptive context from scores
+    def level(score):
+        if score >= 70:
+            return "hög" if language == "sv" else "high"
+        elif score >= 40:
+            return "medel" if language == "sv" else "medium"
+        else:
+            return "låg" if language == "sv" else "low"
 
-**DISC-profil:**
-- Dominance: {scores['dominance']:.1f}/100
-- Influence: {scores['influence']:.1f}/100
-- Steadiness: {scores['steadiness']:.1f}/100
-- Conscientiousness: {scores['conscientiousness']:.1f}/100
+    lang_name = "svenska" if language == "sv" else "English"
+
+    prompt = f"""Du är en djupt erfaren DISC-coach och beteendeanalytiker med 25+ års erfarenhet. \
+Du har ingående kunskap om DISC-modellen baserad på William Moulton Marstons forskning.
+
+**DISC-PROFIL ATT ANALYSERA:**
+- D (Dominans/Röd): {d:.0f}/100 → {level(d)} laddning
+- I (Inflytande/Gul): {i:.0f}/100 → {level(i)} laddning
+- S (Stabilitet/Grön): {s:.0f}/100 → {level(s)} laddning
+- C (Följsamhet/Blå): {c:.0f}/100 → {level(c)} laddning
 - Profilkod: {profile_code}
 
-**Uppgift:** Skapa exceptionellt djupa, personliga insikter som går LÅNGT BORTOM generiska DISC-beskrivningar.
+**DISC-RAMVERK (din expertkunskap):**
 
-**Format (JSON):**
+D (Dominans/Röd): Hur personen hanterar utmaningar och problem.
+- Hög D: Resultatdriven, direkt, tävlingsinriktad, beslutsam, riskbenägen, kan upplevas som dominant
+- Låg D: Samarbetsinriktad, söker konsensus, försiktig, föredrar att andra tar beslut
+
+I (Inflytande/Gul): Hur personen kommunicerar och påverkar andra.
+- Hög I: Social, entusiastisk, övertygande, positiv, behöver uppskattning, kan tala före de tänker
+- Låg I: Analytisk, kritisk, föredrar att arbeta självständigt, misstänksam, behöver fakta
+
+S (Stabilitet/Grön): Hur personen svarar på omgivningens tempo och förändringar.
+- Hög S: Tålmodig, lojal, lugn, harmonisökande, förändringsmotstånd, slutför uppgifter, pålitlig
+- Låg S: Snabb, aktiv, trivs med variation, otålig, kan ha svårt att slutföra uppgifter
+
+C (Compliance/Blå): Hur personen förhåller sig till regler och kvalitetskrav.
+- Hög C: Noggrann, analytisk, kvalitetsmedveten, regelföljande, kräver fakta, kan ha svårt med deadlines
+- Låg C: Okonventionell, tar risker, ser regler som riktlinjer, direkt, kan upplevas som taktlös
+
+**BETEENDETENDENSER:**
+- Prestationsinriktad (hög D): Drivs av att vinna och nå resultat
+- Påverkande (hög I): Motiveras av att övertyga och engagera andra
+- Principfast (hög C): Behov av att arbeta enligt principer och etik
+- Uppmärksam (hög C): Lyssnar noga, uppmärksammar detaljer
+- Självmotiverande (hög D): Driver sig själv utan yttre motivation
+- Uthållig (hög S): Slutför det de börjat, trotsar motgångar
+- Självsäker (låg C + hög D/I): Social lätthet, oberoende av regler
+- Försiktig (hög C): Fakta- och logikbaserat, undviker risker
+- Entusiastisk (hög I): Utåtriktad, smitta av energi
+- Eftertänksam (hög S/C): Väljer ord och handlingar omsorgsfullt
+- Oberoende (hög D + låg C): Självständig, utmanar regler
+- Samverkande (låg D + hög S/C): Arbetar inom strukturer, söker konsensus
+
+**VAD SOM SKAPAR ENGAGEMANG vs STRESS:**
+- Hög D engageras av: autonomi, utmaningar, snabba resultat, tävling
+- Hög D stressas av: mikromanagement, långsamma processer, brist på kontroll
+- Hög I engageras av: socialt samspel, uppskattning, nya idéer, kreativitet
+- Hög I stressas av: isolering, kritik, rigid struktur, enformighet
+- Hög S engageras av: stabilitet, teamharmoni, långsiktiga relationer, att vara till hjälp
+- Hög S stressas av: plötsliga förändringar, konflikter, oförutsägbarhet
+- Hög C engageras av: kvalitet, analys, tydliga processer, att göra rätt
+- Hög C stressas av: brådska, otydlighet, slarv, att behöva kompromissa med kvalitet
+
+**UPPDRAG:** Skapa en DJUPT PERSONLIG och INSIKTSFULL DISC-rapport på {lang_name}.
+
+Analysera interaktionen mellan {profile_code}-profilernas specifika poäng ({d:.0f}/{i:.0f}/{s:.0f}/{c:.0f}).
+Undvik generiska DISC-beskrivningar. Fokusera på JUST DENNA kombination och hur dimensionerna samverkar.
+
+**Svara som JSON:**
 ```json
 {{
-  "unique_combination": "3-4 meningar om vad som är UNIKT med just denna DISC-kombination. Ge KONKRETA exempel på hur dragen samverkar i verkliga situationer.",
+  "unique_combination": "4-5 meningar om vad som är UNIKT med just denna specifika DISC-kombination. Hur samverkar de exakta poängen? Vad är den paradox eller styrka som uppstår när dessa dimensioner möts? Ge ett konkret exempel på hur detta yttrar sig i verkliga situationer.",
 
-  "leadership_style": "4-5 meningar om exakt hur personen leder bäst. Inkludera: beslutsfattande-stil, hur de motiverar team, konflikthantering, delegering. GE ACTIONABLE TIPS.",
+  "grundbeteende_summary": "3-4 meningar om personens naturliga beteende när de känner sig trygga och avspända. Vad är det de naturligt gör utan ansträngning? Vilken energi utstrålar de?",
 
-  "stress_response": "3-4 meningar om hur personen reagerar under stress baserat på DISC-profilen, vad som utlöser stress, och KONKRETA strategier för att hantera det.",
+  "stress_triggers": "3-4 meningar om VAD som konkret utlöser stress och press för just denna DISC-profil. Hur yttrar sig stressreaktionen beteendemässigt? Ge 2 konkreta situationsexempel.",
 
-  "ideal_environment": "3-4 meningar om den perfekta arbetsmiljön för denna profil. Konkret: kontor eller hemma? Team eller solo? Struktur eller frihet? Tempo?",
+  "stress_strategies": ["3 mycket konkreta, steg-för-steg strategier för stresshantering specifikt anpassade till denna DISC-profil"],
 
-  "blind_spots": ["2-3 utvecklingsområden med MYCKET KONKRETA, STEG-FÖR-STEG råd baserat på DISC-profilen"],
+  "leadership_style": "4-5 meningar om hur denna person leder bäst. Hur fattar de beslut? Hur motiverar de andra? Hur hanterar de konflikter? Vad är deras naturliga ledarstil och var behöver de växa?",
 
-  "communication_tips": ["3-4 konkreta kommunikationstips för hur personen kan kommunicera mer effektivt med andra DISC-stilar"]
+  "engagement_factors": ["4 konkreta saker/miljöer/situationer som skapar djup motivation och engagemang för just denna profil"],
+
+  "irritation_triggers": ["3 konkreta beteenden hos ANDRA som kan irritera denna profil, baserat på DISC-teorin"],
+
+  "communication_deep": "3-4 meningar om hur denna person kommunicerar på djupet - inte bara stil utan VARFÖR de kommunicerar som de gör baserat på deras DISC-drivkrafter. Vad behöver de från andra för att kommunikationen ska fungera?",
+
+  "blind_spots": ["3 blinda fläckar med KONKRETA, ACTIONABLE råd - inte generiska tips utan specifika för denna DISC-kombination"],
+
+  "development_focus": "2-3 meningar om det viktigaste utvecklingsområdet för just denna profil och varför det är transformativt för dem",
+
+  "collaboration_tips": {{
+    "with_D": "Konkret råd för att samarbeta med D-typer (Röda)",
+    "with_I": "Konkret råd för att samarbeta med I-typer (Gula)",
+    "with_S": "Konkret råd för att samarbeta med S-typer (Gröna)",
+    "with_C": "Konkret råd för att samarbeta med C-typer (Blå)"
+  }}
 }}
 ```
 
 **KRAV:**
-1. DJUP analys av DISC-interaktioner
-2. KONKRETA exempel och scenarios
-3. ACTIONABLE råd
-4. PERSONLIGT och VARMT
-5. Fokus på UNIKA kombinationen av DISC-drag
-
-Generera rapporten nu:"""
+- Skriv varmt, personligt och direkt till personen (använd "du")
+- Var SPECIFIK för denna profil ({d:.0f}/{i:.0f}/{s:.0f}/{c:.0f}) - inte generisk
+- Inkludera konkreta examples och scenarios
+- Balansera styrkor med utvecklingsområden
+- Undvik akademiskt språk - var tillgänglig och engagerande
+- Ge actionable råd, inte bara beskrivningar"""
 
     try:
         message = anthropic_client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=2500,
+            max_tokens=4000,
             temperature=0.7,
             messages=[{"role": "user", "content": prompt}]
         )
