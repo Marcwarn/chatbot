@@ -1,31 +1,23 @@
 {
     "version": 2,
     "builds": [
-          {
-                  "src": "api/index.py",
-                  "use": "@vercel/python",
-                  "config": { "maxLambdaSize": "15mb" }
-          },
-          {
-                  "src": "*.html",
-                  "use": "@vercel/static"
-          },
-          {
-                  "src": "*.css",
-                  "use": "@vercel/static"
-          },
-          {
-                  "src": "*.js",
-                  "use": "@vercel/static"
-          }
+        {
+            "src": "api/index.py",
+            "use": "@vercel/python",
+            "config": { "maxLambdaSize": "50mb" }
+        },
+        { "src": "*.html", "use": "@vercel/static" },
+        { "src": "*.css", "use": "@vercel/static" },
+        { "src": "*.js", "use": "@vercel/static" }
     ],
     "routes": [
-          { "src": "/api/(.*)", "dest": "/api/index.py" },
-          { "src": "/admin", "dest": "/admin.html" },
-          { "src": "/disc", "dest": "/disc-assessment.html" },
-          { "src": "/", "dest": "/landing.html" },
-          { "src": "/(.*)\\.html", "dest": "/$1.html" },
-          { "src": "/(.*)\\.css", "dest": "/$1.css" },
-          { "src": "/(.*)\\.js", "dest": "/$1.js" }
+        { "src": "/api/(.*)", "dest": "/api/index.py" },
+        { "src": "/disc/(.*)", "dest": "/api/index.py" },
+        { "src": "/admin", "dest": "/admin.html" },
+        { "src": "/disc-assessment", "dest": "/disc-assessment.html" },
+        { "src": "/", "dest": "/landing.html" },
+        { "src": "/(.*)\\.html", "dest": "/$1.html" },
+        { "src": "/(.*)\\.css", "dest": "/$1.css" },
+        { "src": "/(.*)\\.js", "dest": "/$1.js" }
     ]
 }
