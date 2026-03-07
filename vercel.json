@@ -1,16 +1,12 @@
 {
-  "version": 2,
-  "functions": {
-    "api/index.py": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.py" },
-    { "source": "/admin", "destination": "/admin.html" }
-  ],
-  "redirects": [
-    { "source": "/", "destination": "/landing.html", "permanent": false }
-  ]
+    "version": 2,
+    "rewrites": [
+          { "source": "/api/(.*)", "destination": "/api/index.py" },
+          { "source": "/admin", "destination": "/admin.html" },
+          { "source": "/disc-assessment", "destination": "/disc-assessment.html" },
+          { "source": "/landing", "destination": "/landing.html" }
+    ],
+    "redirects": [
+          { "source": "/", "destination": "/landing.html", "permanent": false }
+    ]
 }
