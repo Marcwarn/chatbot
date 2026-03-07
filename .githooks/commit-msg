@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# Commit Message Hook - Security Context Validation
+# Ensures security-related commits are properly documented
+#
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Security-related keywords
+SECURITY_KEYWORDS=(
+    "password"
+    "auth"
+    "security"
+    "vulnerability"
+    "XSS"
+    "CSRF"
+    "SQL injection"
+    "rate limit"
+    "CORS"
+    "bcrypt"
+    "secret"
+    "token"
+    "GDPR"
+    "audit"
+)
+
+# Check if commit message contains security keywords
+CONTAINS_SECURITY_KEYWORD=false
+for keyword in "${SECURITY_KEYWORDS[@]}"; do
+    if echo "$COMMIT_MSG" | grep -iq "$keyword"; then
+        CONTAINS_SECURITY_KEYWORD=true
+        break
+    fi
+done
+
+# If security-related, ensure it's well-documented
+if [ "$CONTAINS_SECURITY_KEYWORD" = true ]; then
+    # Check if commit message is detailed enough (at least 50 characters)
+    if [ ${#COMMIT_MSG} -lt 50 ]; then
+        echo -e "${YELLOW}⚠️  WARNING: Security-related commit should have detailed message${NC}"
+        echo "   Current length: ${#COMMIT_MSG} characters (minimum 50 recommended)"
+        echo ""
+        echo "   Consider explaining:"
+        echo "   - What vulnerability was fixed"
+        echo "   - Why the change improves security"
+        echo "   - Reference to LESSONS_LEARNED.md if applicable"
+        echo ""
+        echo -e "${YELLOW}   Commit allowed, but please consider adding more detail.${NC}"
+    fi
+
+    # Check if security fix references the security audit report
+    if echo "$COMMIT_MSG" | grep -iq "fix\|patch\|resolve"; then
+        if ! echo "$COMMIT_MSG" | grep -iq "vulnerability\|CVE\|SECURITY\|audit"; then
+            echo -e "${YELLOW}⚠️  TIP: Security fix commits should reference the vulnerability${NC}"
+            echo "   Example: 'Fix SQL injection vulnerability (SECURITY-001)'"
+        fi
+    fi
+fi
+
+# Ensure commit message has proper format (not just "fix" or "update")
+if echo "$COMMIT_MSG" | grep -Eiq "^(fix|update|change)$"; then
+    echo -e "${RED}❌ COMMIT BLOCKED: Commit message too vague${NC}"
+    echo "   '$COMMIT_MSG' is not descriptive enough"
+    echo ""
+    echo "   Use format: 'Fix: <what was fixed>'"
+    echo "   Example: 'Fix: Remove hardcoded admin password'"
+    exit 1
+fi
+
+# Check for WIP/TODO/FIXME in commit message (should not be committed)
+if echo "$COMMIT_MSG" | grep -Eiq "^(WIP|TODO|FIXME)"; then
+    echo -e "${YELLOW}⚠️  WARNING: Committing WIP/TODO/FIXME${NC}"
+    echo "   Consider completing the work before committing"
+fi
+
+exit 0

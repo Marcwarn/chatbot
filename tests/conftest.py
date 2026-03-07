@@ -459,6 +459,39 @@ def memory_monitor():
     return MemoryMonitor()
 
 
+# ── Additional Test Data Fixtures ───────────────────────────────────────────
+
+@pytest.fixture(scope="function")
+def complete_assessment_data():
+    """
+    Complete valid assessment data for testing
+
+    Returns assessment with all 50 IPIP questions answered
+    """
+    return {
+        "answers": [
+            {"question_id": i, "value": (i % 5) + 1}
+            for i in range(1, 51)
+        ]
+    }
+
+
+@pytest.fixture(scope="function")
+def mock_big_five_scores():
+    """
+    Mock Big Five personality scores for testing
+
+    Returns realistic percentile scores
+    """
+    return {
+        "E": 65.5,  # Extraversion
+        "A": 72.0,  # Agreeableness
+        "C": 55.5,  # Conscientiousness
+        "N": 45.0,  # Neuroticism (lower = more stable)
+        "O": 80.0,  # Openness
+    }
+
+
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
@@ -473,6 +506,20 @@ def cleanup_sessions():
     try:
         from api_admin import _admin_sessions
         _admin_sessions.clear()
+    except:
+        pass
+
+    # Clear assessment sessions
+    try:
+        from api_main_gdpr import _sessions
+        _sessions.clear()
+    except:
+        pass
+
+    # Clear user profiles
+    try:
+        from api_main_gdpr import _user_profiles
+        _user_profiles.clear()
     except:
         pass
 
@@ -491,3 +538,29 @@ def reset_rate_limiters():
         _rate_limit_storage.clear()
     except:
         pass
+
+
+# ── Test Markers ─────────────────────────────────────────────────────────────
+
+def pytest_configure(config):
+    """
+    Register custom pytest markers for test categorization
+    """
+    config.addinivalue_line(
+        "markers", "critical: Critical security vulnerability tests"
+    )
+    config.addinivalue_line(
+        "markers", "high: High severity vulnerability tests"
+    )
+    config.addinivalue_line(
+        "markers", "medium: Medium severity vulnerability tests"
+    )
+    config.addinivalue_line(
+        "markers", "performance: Performance and load tests"
+    )
+    config.addinivalue_line(
+        "markers", "integration: End-to-end integration tests"
+    )
+    config.addinivalue_line(
+        "markers", "slow: Tests that take > 5 seconds"
+    )

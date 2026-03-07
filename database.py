@@ -3,7 +3,7 @@ GDPR-Compliant Database Models
 SQLAlchemy models för personality assessment med full GDPR support
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, ForeignKey, JSON, Enum, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from datetime import datetime, timedelta
@@ -11,8 +11,18 @@ from typing import Optional
 import hashlib
 import secrets
 import json
+import enum
 
 Base = declarative_base()
+
+# ============================================================================
+# ENUMS
+# ============================================================================
+
+class AssessmentType(enum.Enum):
+    """Assessment type enumeration"""
+    BIG_FIVE = "big_five"
+    DISC = "disc"
 
 # ============================================================================
 # USER & CONSENT MODELS
@@ -109,13 +119,14 @@ class UserConsent(Base):
 class Assessment(Base):
     """
     Assessment model with GDPR compliance
+    Supports both Big Five and DISC assessments
     """
     __tablename__ = "assessments"
 
     id = Column(String, primary_key=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-    assessment_type = Column(String, nullable=False)
+    assessment_type = Column(Enum(AssessmentType), nullable=False, default=AssessmentType.BIG_FIVE)
     language = Column(String, default="sv")
     status = Column(String, default="in_progress")  # in_progress, completed, deleted
 
@@ -136,7 +147,7 @@ class Assessment(Base):
         """Export assessment data (GDPR: Right to Access)"""
         data = {
             "assessment_id": self.id,
-            "assessment_type": self.assessment_type,
+            "assessment_type": self.assessment_type.value if isinstance(self.assessment_type, AssessmentType) else self.assessment_type,
             "language": self.language,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
@@ -222,19 +233,27 @@ class AssessmentAnswer(Base):
 class AssessmentResult(Base):
     """
     Assessment results and analysis
+    Supports both Big Five and DISC results
     """
     __tablename__ = "assessment_results"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     assessment_id = Column(String, ForeignKey("assessments.id", ondelete="CASCADE"), unique=True, nullable=False)
 
-    # Results stored as JSON for flexibility
+    # Results stored as JSON for flexibility (works for both Big Five and DISC)
     scores = Column(JSON, nullable=False)  # List of dimension scores
     summary = Column(Text, nullable=False)
     detailed_analysis = Column(Text, nullable=False)
     strengths = Column(JSON, nullable=False)  # List of strengths
     development_areas = Column(JSON, nullable=False)  # List of areas
     recommendations = Column(JSON, nullable=False)  # List of recommendations
+
+    # DISC-specific fields (nullable for backward compatibility with Big Five)
+    dominance_score = Column(Float, nullable=True)
+    influence_score = Column(Float, nullable=True)
+    steadiness_score = Column(Float, nullable=True)
+    conscientiousness_score = Column(Float, nullable=True)
+    disc_profile = Column(String, nullable=True)  # e.g., "Di", "SC", "D"
 
     created_at = Column(DateTime, default=datetime.utcnow)
 
