@@ -148,6 +148,19 @@ def chat_with_personality_coach(
             messages=messages
         )
 
+        # Track API cost
+        try:
+            from cost_tracker import cost_tracker
+            cost_tracker.track_anthropic_call(
+                model="claude-sonnet-4-5-20250929",
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                purpose="chat",
+                cache_hit=False
+            )
+        except Exception as track_error:
+            print(f"Cost tracking error: {track_error}")
+
         return response.content[0].text
 
     except Exception as e:

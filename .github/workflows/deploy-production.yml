@@ -1,0 +1,109 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (use with caution)'
+        required: false
+        default: 'false'
+
+jobs:
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Security scan
+        run: |
+          python security_scanner.py --strict
+
+  test-gate:
+    name: Test Gate
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run full test suite
+        env:
+          ADMIN_PASSWORD_HASH: ${{ secrets.PROD_ADMIN_HASH }}
+          ADMIN_API_KEY: ${{ secrets.PROD_API_KEY }}
+        run: |
+          pytest tests/ -v --cov=. --cov-report=term-missing
+
+      - name: Verify 100% critical path coverage
+        run: |
+          python tests/verify_coverage.py --min-coverage 80
+
+  deploy:
+    name: Deploy to Production
+    needs: [security-gate, test-gate]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://persona-assessment.vercel.app
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: production
+
+      - name: Deploy to Vercel
+        id: deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROD_PROJECT_ID }}
+          vercel-args: '--prod'
+          scope: ${{ secrets.VERCEL_PROD_SCOPE }}
+
+      - name: Wait for deployment
+        run: sleep 60
+
+      - name: Health check
+        run: |
+          curl -f https://persona-assessment.vercel.app/api/health || exit 1
+
+      - name: Smoke tests
+        run: |
+          python tests/smoke_tests.py --url https://persona-assessment.vercel.app --critical-only
+
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: 'success'
+          deployment-id: ${{ steps.deploy.outputs.deployment-id }}
+
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: 'failure'
+          deployment-id: ${{ steps.deploy.outputs.deployment-id }}
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed! Consider rollback"
+          # vercel rollback command

@@ -188,6 +188,13 @@ let scores = null;
 let radarChart = null;
 let consents = { data: false, ai: false, storage: true };
 
+// HTML escaping to prevent XSS attacks
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // ─────────────────────────────────────────────
 // VIEWS
 // ─────────────────────────────────────────────
@@ -794,6 +801,7 @@ function drawChart(display) {
 
 let chatHistory = [];
 let isChatLoading = false;
+let userId = null; // Generated when starting assessment
 
 function renderChat() {
     const dims = ["E","A","C","N","O"];
@@ -869,7 +877,7 @@ function renderChat() {
                             <i data-lucide="bot" class="w-4 h-4 text-green-600"></i>
                             <span class="text-xs font-semibold text-gray-500">Personlighetscoach</span>
                         </div>` : ''}
-                        <p class="text-sm ${isUser ? 'text-white' : 'text-gray-800'} leading-relaxed whitespace-pre-wrap">${msg.content}</p>
+                        <p class="text-sm ${isUser ? 'text-white' : 'text-gray-800'} leading-relaxed whitespace-pre-wrap">${escapeHtml(msg.content)}</p>
                     </div>
                 </div>`;
             }).join('')}
@@ -943,9 +951,9 @@ async function sendChatMessage(event) {
     }, 50);
     
     try {
-        // Mock API call - replace with real backend call
-        const response = await mockChatAPI(message);
-        
+        // Real API call to backend
+        const response = await callChatAPI(message);
+
         chatHistory.push({ role: 'assistant', content: response });
     } catch (error) {
         chatHistory.push({ 
@@ -964,40 +972,77 @@ async function sendChatMessage(event) {
     }
 }
 
-// Mock chat API (replace with real backend call)
-async function mockChatAPI(message) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+// Real chat API that calls the backend
+async function callChatAPI(message) {
     const dims = ["E","A","C","N","O"];
-    const display = {};
+    const profileScores = {};
     dims.forEach(d => {
-        display[d] = d === "N" ? getNScore(scores[d]) : scores[d];
+        profileScores[d] = d === "N" ? getNScore(scores[d]) : scores[d];
     });
-    
-    // Simple rule-based responses for demo
+
+    // Ensure userId exists
+    if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Get conversation history in correct format
+    const history = chatHistory
+        .filter(msg => msg.role !== 'user' || msg.content !== message)
+        .map(msg => ({
+            role: msg.role,
+            content: msg.content
+        }));
+
+    try {
+        const response = await fetch('/api/v1/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                message: message,
+                profile_scores: profileScores,
+                conversation_history: history,
+                include_profile: true
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API error:', response.status, errorText);
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response;
+    } catch (error) {
+        console.error('Chat API error:', error);
+        // Fallback to mock response if API fails
+        return mockChatFallback(message, profileScores);
+    }
+}
+
+// Fallback mock responses if API is unavailable
+function mockChatFallback(message, profileScores) {
     const lowerMsg = message.toLowerCase();
-    
+
     if (lowerMsg.includes('jobb') || lowerMsg.includes('karriär')) {
-        const careers = getCareerSuggestions(display);
+        const careers = getCareerSuggestions(profileScores);
         return `Baserat på din Big Five-profil passar dessa roller dig särskilt väl:\n\n${careers.map(c => `• ${c}`).join('\n')}\n\nVill du att jag går djupare in på någon av dessa?`;
     }
-    
+
     if (lowerMsg.includes('stress') || lowerMsg.includes('oro')) {
-        const n = display.N;
+        const n = profileScores.N;
         if (n <= 40) {
             return `Din höga emotionella stabilitet (${Math.round(n)}/100) betyder att du generellt hanterar stress bättre än de flesta. Men alla behöver strategier:\n\n✓ Behåll dina rutiner - de ger struktur\n✓ Hjälp andra som är mer stressade - du är en klippa för dem\n✓ Glöm inte att ta pauser även när du "klarar det"`;
         } else {
             return `Med din känslomässiga lyhördhet (Em. stabilitet ${Math.round(n)}/100) känner du stress djupt - det är både en styrka och utmaning.\n\nKonkreta tips för dig:\n\n1. **Dagliga rutiner:** Morgonpromenad eller andningsövning\n2. **Gränssättning:** Lär dig säga nej till saker som tär på energin\n3. **Journaling:** Skriv ner tankar - det skapar distans\n4. **Professionellt stöd:** Överväg terapi om stressen påverkar vardagen\n\nVill du prata mer om något specifikt?`;
         }
     }
-    
-    if (lowerMsg.includes('kommunikation') || lowerMsg.includes('samtal')) {
-        return getCommunicationStyle(display);
-    }
-    
+
     // Default response
-    return `Tack för din fråga! Jag är här för att hjälpa dig förstå din personlighet bättre.\n\nBaserat på din profil:\n- Extraversion: ${Math.round(display.E)}/100\n- Vänlighet: ${Math.round(display.A)}/100\n- Samvetsgrannhet: ${Math.round(display.C)}/100\n- Em. stabilitet: ${Math.round(display.N)}/100\n- Öppenhet: ${Math.round(display.O)}/100\n\nVad vill du veta mer om? Jag kan hjälpa med karriärval, relationer, kommunikation, eller personlig utveckling!`;
+    return `Tack för din fråga! Jag är här för att hjälpa dig förstå din personlighet bättre.\n\nBaserat på din profil:\n- Extraversion: ${Math.round(profileScores.E)}/100\n- Vänlighet: ${Math.round(profileScores.A)}/100\n- Samvetsgrannhet: ${Math.round(profileScores.C)}/100\n- Em. stabilitet: ${Math.round(profileScores.N)}/100\n- Öppenhet: ${Math.round(profileScores.O)}/100\n\nVad vill du veta mer om? Jag kan hjälpa med karriärval, relationer, kommunikation, eller personlig utveckling!`;
 }
 
 // CONTROLS
@@ -1012,6 +1057,7 @@ function toggleConsent(id) {
 function startTest() {
     qIdx = 0;
     answers = {};
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     view = "question";
     render();
 }

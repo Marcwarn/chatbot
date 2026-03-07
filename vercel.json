@@ -1,19 +1,40 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "big-five-demo.html",
-      "use": "@vercel/static"
+    "version": 2,
+    "builds": [
+          {
+                  "src": "api/index.py",
+                  "use": "@vercel/python",
+                  "config": {
+                            "maxLambdaSize": "15mb"
+                  }
+          },
+          {
+                  "src": "*.html",
+                  "use": "@vercel/static"
+          }
+    ],
+    "routes": [
+          {
+                  "src": "/api/(.*)",
+                  "dest": "/api/index.py"
+          },
+          {
+                  "src": "/admin",
+                  "dest": "/admin.html"
+          },
+          {
+                  "src": "/",
+                  "dest": "/landing.html"
+          },
+          {
+                  "src": "/(.*)",
+                  "dest": "/$1"
+          }
+    ],
+    "functions": {
+          "api/index.py": {
+                  "memory": 1024,
+                  "maxDuration": 10
+          }
     }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/big-five-demo.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
 }

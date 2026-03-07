@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Library - Personality Assessment</title>
+    <link rel="stylesheet" href="brand-colors.css">
+    <style>
+        body {
+            font-family: var(--font-primary);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--color-bg-secondary);
+        }
+
+        h1 {
+            color: var(--color-text-primary);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--color-text-secondary);
+            margin: 3rem 0 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--color-border-light);
+        }
+
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .icon-card {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .icon-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100px;
+            margin-bottom: 1rem;
+        }
+
+        .icon-name {
+            font-weight: var(--font-semibold);
+            color: var(--color-text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .icon-description {
+            font-size: var(--text-sm);
+            color: var(--color-text-tertiary);
+        }
+
+        /* Icon Sizing */
+        .icon-64 { width: 64px; height: 64px; }
+        .icon-48 { width: 48px; height: 48px; }
+        .icon-32 { width: 32px; height: 32px; }
+        .icon-24 { width: 24px; height: 24px; }
+
+        code {
+            background: var(--color-gray-100);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            display: block;
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Visual Assets Icon Library</h1>
+    <p style="font-size: var(--text-lg); color: var(--color-text-secondary); margin-bottom: 3rem;">
+        Complete SVG icon collection for the personality assessment landing page.
+        All icons are scalable, accessible, and optimized for performance.
+    </p>
+
+    <!-- ========================================
+         ASSESSMENT METHOD ICONS
+         ======================================== -->
+    <h2>Assessment Method Icons</h2>
+    <div class="icon-grid">
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Big Five: Five interconnected circles -->
+                    <defs>
+                        <linearGradient id="bigFiveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="32" cy="16" r="7" fill="url(#bigFiveGradient)"/>
+                    <circle cx="16" cy="32" r="7" fill="url(#bigFiveGradient)"/>
+                    <circle cx="48" cy="32" r="7" fill="url(#bigFiveGradient)"/>
+                    <circle cx="24" cy="48" r="7" fill="url(#bigFiveGradient)"/>
+                    <circle cx="40" cy="48" r="7" fill="url(#bigFiveGradient)"/>
+                    <!-- Connection lines -->
+                    <line x1="32" y1="16" x2="16" y2="32" stroke="url(#bigFiveGradient)" stroke-width="2" opacity="0.3"/>
+                    <line x1="32" y1="16" x2="48" y2="32" stroke="url(#bigFiveGradient)" stroke-width="2" opacity="0.3"/>
+                    <line x1="16" y1="32" x2="24" y2="48" stroke="url(#bigFiveGradient)" stroke-width="2" opacity="0.3"/>
+                    <line x1="48" y1="32" x2="40" y2="48" stroke="url(#bigFiveGradient)" stroke-width="2" opacity="0.3"/>
+                </svg>
+            </div>
+            <div class="icon-name">Big Five</div>
+            <div class="icon-description">Five-Factor Model with interconnected traits</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <!-- DISC: Four quadrants in circle -->
+                    <circle cx="32" cy="32" r="30" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+                    <path d="M32,32 L32,2 A30,30 0 0,1 62,32 Z" fill="#FF4444" opacity="0.9"/>
+                    <path d="M62,32 L32,32 L32,62 A30,30 0 0,0 62,32 Z" fill="#FFD700" opacity="0.9"/>
+                    <path d="M32,62 L2,32 A30,30 0 0,1 32,62 Z" fill="#44AA44" opacity="0.9"/>
+                    <path d="M2,32 L32,2 A30,30 0 0,0 2,32 Z" fill="#4444FF" opacity="0.9"/>
+                    <!-- Center circle -->
+                    <circle cx="32" cy="32" r="8" fill="white"/>
+                    <!-- Letters -->
+                    <text x="32" y="18" text-anchor="middle" fill="white" font-size="10" font-weight="bold">D</text>
+                    <text x="46" y="38" text-anchor="middle" fill="white" font-size="10" font-weight="bold">I</text>
+                    <text x="32" y="54" text-anchor="middle" fill="white" font-size="10" font-weight="bold">S</text>
+                    <text x="18" y="38" text-anchor="middle" fill="white" font-size="10" font-weight="bold">C</text>
+                </svg>
+            </div>
+            <div class="icon-name">DISC</div>
+            <div class="icon-description">Four personality dimensions in quadrant circle</div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         FEATURE BENEFIT ICONS
+         ======================================== -->
+    <h2>Feature & Benefit Icons (24px)</h2>
+    <div class="icon-grid">
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #667eea;">
+                    <!-- Self-Insight: Target/Bullseye -->
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                </svg>
+            </div>
+            <div class="icon-name">Self-Insight</div>
+            <div class="icon-description">Target/Bullseye icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #764ba2;">
+                    <!-- Career: Briefcase -->
+                    <rect x="4" y="8" width="16" height="12" rx="2"/>
+                    <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="12" y1="14" x2="12" y2="14"/>
+                </svg>
+            </div>
+            <div class="icon-name">Career Growth</div>
+            <div class="icon-description">Briefcase icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;">
+                    <!-- Relationships: Handshake -->
+                    <path d="M20 7h-9"/>
+                    <path d="M14 17H5"/>
+                    <circle cx="17" cy="17" r="3"/>
+                    <circle cx="7" cy="7" r="3"/>
+                    <path d="M14 7l-4 4"/>
+                </svg>
+            </div>
+            <div class="icon-name">Relationships</div>
+            <div class="icon-description">Connection icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;">
+                    <!-- Personal Growth: Upward Chart -->
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    <line x1="2" y1="20" x2="22" y2="20"/>
+                </svg>
+            </div>
+            <div class="icon-name">Personal Growth</div>
+            <div class="icon-description">Upward chart icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #8b5cf6;">
+                    <!-- Science-Based: Microscope/Flask -->
+                    <path d="M7 16.5l-3 3c-.5.5-.5 1.5 0 2 .5.5 1.5.5 2 0l3-3"/>
+                    <path d="M9 14l4-7 3 3-7 4z"/>
+                    <path d="M15 6l3 3"/>
+                    <circle cx="17" cy="17" r="5"/>
+                    <circle cx="17" cy="17" r="2"/>
+                </svg>
+            </div>
+            <div class="icon-name">Science-Based</div>
+            <div class="icon-description">Research icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #059669;">
+                    <!-- Security: Lock -->
+                    <rect x="5" y="11" width="14" height="10" rx="2"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                    <circle cx="12" cy="16" r="1"/>
+                </svg>
+            </div>
+            <div class="icon-name">Security</div>
+            <div class="icon-description">Lock icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0891b2;">
+                    <!-- Privacy: Shield -->
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                </svg>
+            </div>
+            <div class="icon-name">Privacy</div>
+            <div class="icon-description">Shield icon</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;">
+                    <!-- Trust: Checkmark Circle -->
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9 12l2 2 4-4"/>
+                </svg>
+            </div>
+            <div class="icon-name">Trust</div>
+            <div class="icon-description">Verified checkmark</div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         TRUST BADGES
+         ======================================== -->
+    <h2>Trust & Security Badges</h2>
+    <div class="icon-grid">
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- GDPR Compliant Badge -->
+                    <circle cx="50" cy="50" r="48" fill="#10b981"/>
+                    <circle cx="50" cy="50" r="44" fill="none" stroke="white" stroke-width="2"/>
+                    <path d="M50,20 L50,45 L70,45" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+                    <circle cx="50" cy="45" r="3" fill="white"/>
+                    <text x="50" y="68" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">GDPR</text>
+                    <text x="50" y="82" text-anchor="middle" fill="white" font-size="10" font-family="sans-serif">Compliant</text>
+                </svg>
+            </div>
+            <div class="icon-name">GDPR Compliant</div>
+            <div class="icon-description">Data protection compliance badge</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- SSL/Secure Badge -->
+                    <circle cx="50" cy="50" r="48" fill="#059669"/>
+                    <path d="M50,20 C50,20 65,25 65,40" stroke="#047857" stroke-width="4" fill="none"/>
+                    <path d="M50,20 C50,20 35,25 35,40" stroke="#047857" stroke-width="4" fill="none"/>
+                    <rect x="35" y="40" width="30" height="30" rx="3" fill="#047857"/>
+                    <path d="M43,55 L47,60 L57,48" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <text x="50" y="90" text-anchor="middle" fill="white" font-size="12" font-weight="bold" font-family="sans-serif">SECURE</text>
+                </svg>
+            </div>
+            <div class="icon-name">SSL Secure</div>
+            <div class="icon-description">Encrypted connection badge</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Science-Based/Validated Badge -->
+                    <circle cx="50" cy="50" r="48" fill="#3b82f6"/>
+                    <circle cx="50" cy="50" r="44" fill="none" stroke="white" stroke-width="2" stroke-dasharray="4 2"/>
+                    <circle cx="50" cy="50" r="20" fill="none" stroke="white" stroke-width="3"/>
+                    <circle cx="50" cy="35" r="3" fill="white"/>
+                    <circle cx="65" cy="50" r="3" fill="white"/>
+                    <circle cx="50" cy="65" r="3" fill="white"/>
+                    <circle cx="35" cy="50" r="3" fill="white"/>
+                    <line x1="50" y1="35" x2="65" y2="50" stroke="white" stroke-width="2"/>
+                    <line x1="65" y1="50" x2="50" y2="65" stroke="white" stroke-width="2"/>
+                    <text x="50" y="92" text-anchor="middle" fill="white" font-size="10" font-weight="bold" font-family="sans-serif">VALIDATED</text>
+                </svg>
+            </div>
+            <div class="icon-name">Science Validated</div>
+            <div class="icon-description">Research-backed badge</div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         UI ICONS
+         ======================================== -->
+    <h2>UI & Navigation Icons</h2>
+    <div class="icon-grid">
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Checkmark -->
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="icon-name">Checkmark</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Arrow Right -->
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </div>
+            <div class="icon-name">Arrow Right</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Star -->
+                    <polygon points="12 2 15 8.5 22 9.3 17 14.1 18.5 21 12 17.3 5.5 21 7 14.1 2 9.3 9 8.5 12 2"/>
+                </svg>
+            </div>
+            <div class="icon-name">Star</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Menu -->
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </div>
+            <div class="icon-name">Menu</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Close/X -->
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </div>
+            <div class="icon-name">Close</div>
+        </div>
+
+        <div class="icon-card">
+            <div class="icon-container">
+                <svg class="icon-32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Info Circle -->
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12" y2="8"/>
+                </svg>
+            </div>
+            <div class="icon-name">Info</div>
+        </div>
+    </div>
+
+    <!-- ========================================
+         CODE EXAMPLES
+         ======================================== -->
+    <h2>Usage Examples</h2>
+    <div style="background: white; padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+        <h3 style="margin-top: 0;">Inline SVG Icon</h3>
+        <code>&lt;svg class="icon-24" viewBox="0 0 24 24" fill="none" stroke="currentColor"&gt;
+    &lt;!-- Icon path here --&gt;
+&lt;/svg&gt;</code>
+
+        <h3>With Color</h3>
+        <code>&lt;svg class="icon-24" viewBox="0 0 24 24" style="color: var(--color-primary);"&gt;
+    &lt;!-- Icon automatically inherits color --&gt;
+&lt;/svg&gt;</code>
+
+        <h3>Accessible Icon</h3>
+        <code>&lt;svg class="icon-24" viewBox="0 0 24 24" role="img" aria-label="Security lock icon"&gt;
+    &lt;title&gt;Security&lt;/title&gt;
+    &lt;!-- Icon path --&gt;
+&lt;/svg&gt;</code>
+
+        <h3>Decorative Icon (No Screen Reader)</h3>
+        <code>&lt;svg class="icon-24" viewBox="0 0 24 24" aria-hidden="true"&gt;
+    &lt;!-- Decorative only, skipped by screen readers --&gt;
+&lt;/svg&gt;</code>
+    </div>
+
+    <footer style="text-align: center; padding: 3rem 0; color: var(--color-text-tertiary);">
+        <p>Icon Library v1.0 | Last Updated: March 7, 2026</p>
+        <p>All icons are MIT licensed and free to use</p>
+    </footer>
+</body>
+</html>

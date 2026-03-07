@@ -134,12 +134,20 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+.env.staging
+.env.production
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Deployment
+scan-results.json
+backup_*.sql
+*.backup
 
 # Spyder project settings
 .spyderproject

@@ -3,7 +3,8 @@ GDPR-Extended API Endpoints
 Additional endpoints for GDPR compliance
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from api_admin import verify_admin_token
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
@@ -188,8 +189,13 @@ async def get_user_consents(user_id: str):
 # ============================================================================
 
 @router.post("/export", response_model=DataExportResponse)
-async def export_user_data(request: DataExportRequest):
+async def export_user_data(
+    request: DataExportRequest,
+    session: dict = Depends(verify_admin_token)  # SECURITY: Require admin auth
+):
     """
+    Export user data - ADMIN ONLY for security
+
     Export all user data in portable format
 
     GDPR Article 15: Right of access by the data subject
@@ -557,7 +563,11 @@ async def cleanup_expired_data(admin_key: str):
     Requires admin key for security
     """
     # In production, verify admin_key against environment variable
-    if admin_key != "CHANGE_ME_IN_PRODUCTION":
+    ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+    if not ADMIN_API_KEY:
+        raise HTTPException(status_code=503, detail="Admin API not configured")
+
+    if not secrets.compare_digest(admin_key, ADMIN_API_KEY):
         raise HTTPException(status_code=403, detail="Invalid admin key")
 
     try:
@@ -581,7 +591,11 @@ async def anonymize_old_data(admin_key: str, days_threshold: int = 90):
     GDPR: Data minimization - remove personal identifiers from old data
     while keeping statistical value
     """
-    if admin_key != "CHANGE_ME_IN_PRODUCTION":
+    ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+    if not ADMIN_API_KEY:
+        raise HTTPException(status_code=503, detail="Admin API not configured")
+
+    if not secrets.compare_digest(admin_key, ADMIN_API_KEY):
         raise HTTPException(status_code=403, detail="Invalid admin key")
 
     try:

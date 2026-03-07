@@ -21,9 +21,17 @@ from database import (
     AuditLog
 )
 from api_gdpr import router as gdpr_router
+from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
+from api_disc import router as disc_router
+from api_admin_costs import router as admin_costs_router
+from monitoring import init_sentry, rate_limit_middleware
+from cost_tracker import cost_tracker
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 db.create_tables()
+
+# Initialize Sentry monitoring
+init_sentry()
 
 app = FastAPI(
     title="Persona – Big Five Assessment API",
@@ -31,15 +39,32 @@ app = FastAPI(
     version="3.0.0",
 )
 
+# Add middlewares
+# CORS Configuration - Explicit whitelist (SECURITY)
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
+if not ALLOWED_ORIGINS or ALLOWED_ORIGINS == [""]:
+    # Default for local development only
+    ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:8000"]
+    print("⚠️  WARNING: Using default ALLOWED_ORIGINS for development")
+    print("⚠️  Set ALLOWED_ORIGINS in production: https://yourdomain.com")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # Explicit whitelist
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
+# Rate limiting middleware
+app.middleware("http")(rate_limit_middleware)
+
 app.include_router(gdpr_router)
+app.include_router(admin_router)
+app.include_router(admin_costs_router)
+app.include_router(disc_router)
+app.include_router(disc_router)
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
 anthropic_client = None
@@ -386,7 +411,7 @@ def generate_personalized_report(
     is_swedish = lang == "sv"
     lang_name = "svenska" if is_swedish else "English"
 
-    prompt = f"""Du är en expert på personlighetspsykologi och Big Five-modellen (OCEAN). Du ska skapa en djupt personaliserad rapport baserad på följande Big Five-profil (percentiler 0-100, där 50 är median):
+    prompt = f"""Du är en expert på personlighetspsykologi och Big Five-modellen (OCEAN) med 20+ års erfarenhet. Du ska skapa en EXCEPTIONELLT djup och personaliserad rapport baserad på följande Big Five-profil (percentiler 0-100, där 50 är median):
 
 **Profil:**
 - Extraversion: {profile_data['Extraversion']:.1f}
@@ -395,41 +420,53 @@ def generate_personalized_report(
 - Emotionell stabilitet (inverted Neuroticism): {profile_data['Emotional_Stability']:.1f}
 - Öppenhet (Openness): {profile_data['Openness']:.1f}
 
-**Uppgift:** Skriv en personlig, nyanserad rapport på {lang_name} som analyserar KOMBINATIONEN av dessa drag (inte bara varje dimension isolerat). Fokusera på hur dragkombinationerna samverkar i praktiken.
+**Uppgift:** Skriv en ovanligt insiktsfull, personlig rapport på {lang_name} som går DJUPT på KOMBINATIONEN av dessa drag. Detta är inte en generisk sammanfattning - det ska kännas som en personlig coaching-session där du verkligen FÖRSTÅR personen.
 
 **Format (returnera som JSON):**
 ```json
 {{
-  "profile_overview": "2-3 meningar som fångar personens unika kombination av drag och hur de samverkar. Börja med 'Din personlighet kännetecknas av...'",
+  "profile_overview": "3-4 meningar som fångar personens UNIKA kombination av drag med SPECIFIKA exempel på hur de samverkar. Börja med 'Din personlighet kännetecknas av...' och GE KONKRETA SCENARION (t.ex. 'När du står inför ett beslut tenderar du att...')",
 
-  "work_style": "2-3 meningar om hur personen arbetar optimalt. Inkludera: miljöpreferenser, beslutsfattande, projektarbete vs självständigt, deadline-hantering. Konkret och applicerbar.",
+  "work_style": "4-5 meningar om EXAKT hur personen arbetar optimalt. Inkludera: idealisk arbetsmiljö (öppet kontor vs eget rum? Musik vs tystnad?), beslutsfattande (snabbt vs analytiskt?), energihantering över dagen, projektarbete vs självständigt arbete, hur de hanterar deadlines och stress. GE KONKRETA EXEMPEL och HANDLINGSBARA TIPS.",
 
-  "communication_style": "2-3 meningar om kommunikationsstil. Inkludera: lyssnar vs talar, direkt vs diplomatisk, gruppdiskussioner vs 1-on-1, feedback-preferenser. Praktisk coaching.",
+  "communication_style": "4-5 meningar om kommunikation med DJUPA insikter. Hur de tar emot kritik? Hur de ger feedback? Skillnad mellan skriftlig vs muntlig kommunikation? Hur de bygger förtroende? Vad som händer i konflikter? Hur de påverkar gruppdynamik? KONKRETA EXEMPEL och COACHANDE RÅD.",
 
-  "career_suggestions": ["3-5 konkreta karriärvägar eller roller som passar profilen MYCKET väl baserat på dragkombinationen. Var specifik (inte bara 'kreativ', utan 'UX-designer' etc)"],
+  "career_suggestions": ["5-7 MYCKET SPECIFIKA karriärvägar/roller med kort motivering för varje. Inte bara 'UX-designer' utan 'UX-designer på produktteam (din kombination av kreativitet och empati gör dig perfekt för användarforskning och iterativt designarbete)'. VERKLIGT SPECIFIKA JOBBTITLAR."],
 
-  "relationship_insights": "2-3 meningar om relationer (vänskap, romantik, teamarbete). Vad personen söker, vad de ger, potentiella utmaningar, styrkor i relationer. Genuint insiktsfullt.",
+  "relationship_insights": "4-5 meningar om relationer (vänskap, romantik, team) med OVANLIG DJUP. Vad händer när personen blir stressad? Hur uttrycker de kärlek/uppskattning? Vad är deras 'osynliga gåvor' i relationer? Blinda fläckar? Hur kan partners/vänner KONKRET stötta dem? ACTIONABLE INSIGHTS.",
 
-  "development_areas": ["2-3 konkreta utvecklingsområden med ACTIONABLE råd. Inte bara 'bli mer organiserad' utan 'Använd visuella planeringsverktyg som Trello för att struktura projekt utan att förlora spontanitet'"]
+  "development_areas": ["3-4 utvecklingsområden med MYCKET KONKRETA, STEG-FÖR-STEG råd. Varje råd ska innehålla: (1) VAD problemet är, (2) VARFÖR det uppstår baserat på deras profil, (3) EXAKT HUR de kan jobba med det (specifika verktyg, övningar, mindsets). Exempel: 'Din höga öppenhet + låga samvetsgrannhet kan göra att projekt förblir halvfärdiga. PROVA: (1) Börja varje måndag med att välja MAX 3 projekt att fokusera på, (2) Använd Pomodoro (25 min fokus) för att kanalisera kreativitet till färdigställande, (3) Belöna dig när saker blir klara (din hjärna behöver dopamin-kickar för att bygga completion-vana).'"]
 }}
 ```
 
-**Viktiga riktlinjer:**
-1. **Analysera INTERAKTIONER mellan drag** (t.ex. hög E + låg C är annorlunda än hög E + hög C)
-2. Var SPECIFIK och KONKRET (inga generiska råd)
-3. Skriv varmt, positivt och coachande (inte kliniskt)
-4. Fokusera på styrkor MEN nämn utvecklingsområden ärligt
-5. Använd "du"-form (inte "personen")
-6. Career suggestions ska vara 3-5 KONKRETA jobbtitlar/roller (inte vaga)
+**KRITISKA KVALITETSKRAV:**
+1. **DJUP ANALYS av draginteraktioner** - Hur påverkar hög E + låg C SPECIFIKT arbetsvanor? Ge exempel!
+2. **KONKRET och ACTIONABLE** - Varje insikt ska leda till handling
+3. **PERSONLIGT och VARMT** - Skriv som en erfaren coach som bryr sig
+4. **NUANSERAT** - Både styrkor OCH utmaningar, men alltid konstruktivt
+5. **SPECIFIKA EXEMPEL** - "När du..." scenarios som personen känner igen sig i
+6. **"DU"-FORM** genomgående
+7. **LÄNGRE ÄN VANLIGT** - Detta ska vara en DJUP rapport, inte ytlig
+
+GÖR DETTA EXCEPTIONELLT BRA. Personen ska känna "WOW, detta beskriver MIG på djupet!"
 
 Generera rapporten nu:"""
 
     try:
         message = anthropic_client.messages.create(
             model="claude-sonnet-4-5-20250929",
-            max_tokens=2000,
+            max_tokens=4000,  # Increased for deeper, more detailed reports
             temperature=0.7,
             messages=[{"role": "user", "content": prompt}]
+        )
+
+        # Track API cost
+        cost_tracker.track_anthropic_call(
+            model="claude-sonnet-4-5-20250929",
+            input_tokens=message.usage.input_tokens,
+            output_tokens=message.usage.output_tokens,
+            purpose="report_generation",
+            cache_hit=False  # Add cache detection later
         )
 
         response_text = message.content[0].text
@@ -466,10 +503,21 @@ _sessions: Dict[str, dict] = {}
 @app.get("/")
 async def root():
     return {
-        "service": "Persona – Big Five Assessment API",
-        "version": "3.0.0",
+        "service": "Persona – Personality Assessment API",
+        "version": "4.0.0",
         "docs": "/docs",
-        "instrument": "IPIP-50 (International Personality Item Pool)",
+        "assessments": {
+            "big_five": {
+                "instrument": "IPIP-50 (International Personality Item Pool)",
+                "dimensions": ["Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness"],
+                "endpoint": "/api/v1/assessment/start"
+            },
+            "disc": {
+                "instrument": "DISC Behavioral Assessment",
+                "dimensions": ["Dominance", "Influence", "Steadiness", "Conscientiousness"],
+                "endpoint": "/api/v1/disc/start"
+            }
+        },
         "status": "ready",
     }
 
@@ -510,6 +558,13 @@ async def start_assessment(req: StartAssessmentRequest):
             "storage": req.consent_storage,
         },
     }
+
+    # Track user consents for admin
+    update_user_consents(user_id, {
+        "data_processing": req.consent_data_processing,
+        "analysis": req.consent_analysis,
+        "storage": req.consent_storage,
+    })
 
     return AssessmentStartResponse(
         assessment_id=assessment_id,
@@ -586,6 +641,14 @@ async def submit_assessment(req: SubmitAssessmentRequest):
     # Clean session
     _sessions.pop(req.assessment_id, None)
 
+    # Track assessment for admin analytics
+    track_assessment(
+        assessment_id=req.assessment_id,
+        user_id=session["user_id"],
+        scores=display_scores,
+        language=lang
+    )
+
     return AssessmentResultOut(
         assessment_id=req.assessment_id,
         user_id=session["user_id"],
@@ -639,6 +702,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     user_id: str
     message: str
+    profile_scores: Optional[Dict[str, float]] = Field(default=None, description="User's Big Five scores")
     conversation_history: List[ChatMessage] = Field(default_factory=list)
     include_profile: bool = Field(default=True, description="Use user's assessment profile if available")
 
@@ -661,11 +725,12 @@ async def personality_coach_chat(req: ChatRequest):
             detail="Chat feature unavailable - no API key configured"
         )
 
-    # Get user's profile if available
-    profile_scores = None
+    # Get user's profile from request (Vercel serverless compatible)
+    profile_scores = req.profile_scores
     personalized_report = None
 
-    if req.include_profile and req.user_id in _user_profiles:
+    # Fallback to in-memory storage if profile not provided (for local dev)
+    if not profile_scores and req.include_profile and req.user_id in _user_profiles:
         user_data = _user_profiles[req.user_id]
         profile_scores = user_data.get("scores")
         personalized_report = user_data.get("report")
@@ -687,6 +752,9 @@ async def personality_coach_chat(req: ChatRequest):
         {"role": "user", "content": req.message},
         {"role": "assistant", "content": response_text}
     ]
+
+    # Track chat message for admin analytics
+    track_chat_message()
 
     return ChatResponse(
         response=response_text,
@@ -721,3 +789,89 @@ async def get_user_chat_profile(user_id: str):
             "saved_at": _user_profiles[user_id].get("saved_at")
         }
     return {"has_profile": False}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENHANCED INTELLIGENT CHAT (with Response Blender)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from response_blender import create_chat_response
+
+
+class EnhancedChatRequest(BaseModel):
+    user_id: str
+    message: str
+    session_id: Optional[str] = Field(default=None, description="Optional session ID for conversation tracking")
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    language: str = Field(default="sv", description="Language code (sv or en)")
+
+
+class EnhancedChatResponse(BaseModel):
+    response: str
+    conversation_history: List[ChatMessage]
+    classification: Dict[str, Any] = Field(description="Question classification metadata")
+    strategy: Dict[str, str] = Field(description="Response strategy used")
+    context: Dict[str, Any] = Field(description="Conversation context info")
+
+
+@app.post("/api/v1/chat/ask", response_model=EnhancedChatResponse)
+async def intelligent_chat(req: EnhancedChatRequest):
+    """
+    Enhanced intelligent chat with contextual response system.
+
+    Handles:
+    - Personal report questions ("Why is my Conscientiousness low?")
+    - General psychology questions ("What is Big Five?")
+    - Blended responses (general knowledge + personal context)
+    - Conversation memory and context awareness
+    - Emotional tone detection and empathetic responses
+    """
+
+    # Get database session
+    session = db.get_session()
+
+    try:
+        # Convert ChatMessage objects to dicts for context manager
+        history_dicts = [
+            {"role": msg.role, "content": msg.content}
+            for msg in req.conversation_history
+        ]
+
+        # Generate intelligent response using Response Blender
+        result = create_chat_response(
+            user_id=req.user_id,
+            question=req.message,
+            db_session=session,
+            session_id=req.session_id,
+            conversation_history=history_dicts,
+            language=req.language
+        )
+
+        # Build updated conversation history
+        updated_history = history_dicts + [
+            {"role": "user", "content": req.message},
+            {"role": "assistant", "content": result["response"]}
+        ]
+
+        # Track chat message for admin analytics
+        track_chat_message()
+
+        return EnhancedChatResponse(
+            response=result["response"],
+            conversation_history=[ChatMessage(**msg) for msg in updated_history],
+            classification=result["classification"],
+            strategy=result["strategy"],
+            context=result["context"]
+        )
+
+    except Exception as e:
+        print(f"Enhanced chat error: {e}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat error: {str(e)}"
+        )
+    finally:
+        session.close()

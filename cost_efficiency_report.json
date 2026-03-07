@@ -1,0 +1,369 @@
+{
+  "generated_at": "2026-03-07T05:13:51.732266",
+  "report_version": "1.0",
+  "summary": {
+    "overall_efficiency_score": 62.1,
+    "overall_grade": "D",
+    "current_monthly_cost": 490.0,
+    "optimized_monthly_cost": 250.0,
+    "potential_monthly_savings": 240.0,
+    "potential_annual_savings": 2880.0,
+    "implementation_cost": 11200.0,
+    "break_even_months": 7.0,
+    "first_year_roi_percentage": -82.0,
+    "year_2_plus_roi": "Infinite (pure savings)"
+  },
+  "efficiency_scores": {
+    "data_flow": {
+      "score": 85,
+      "grade": "B",
+      "description": "How efficiently data flows through the system",
+      "key_issues": [
+        "\u2705 N+1 queries fixed",
+        "\u2705 Indexes added",
+        "\u26a0\ufe0f In-memory sessions lost on restart"
+      ]
+    },
+    "api_design": {
+      "score": 72,
+      "grade": "C",
+      "description": "API endpoint design and usage patterns",
+      "key_issues": [
+        "\u2705 RESTful design",
+        "\u26a0\ufe0f Some endpoints miss caching",
+        "\u26a0\ufe0f No rate limiting tiers"
+      ]
+    },
+    "ai_usage": {
+      "score": 45,
+      "grade": "F",
+      "description": "AI model usage and cost efficiency",
+      "key_issues": [
+        "\u274c No caching (reports regenerated)",
+        "\u274c Always expensive Sonnet",
+        "\u274c Verbose prompts waste tokens"
+      ]
+    },
+    "cache_efficiency": {
+      "score": 60,
+      "grade": "D",
+      "description": "Caching effectiveness",
+      "key_issues": [
+        "\u2705 In-memory cache implemented",
+        "\u26a0\ufe0f Only 15% hit rate",
+        "\u274c No Redis (distributed cache)"
+      ]
+    },
+    "database_efficiency": {
+      "score": 88,
+      "grade": "B",
+      "description": "Database query optimization",
+      "key_issues": [
+        "\u2705 Indexes on all critical queries",
+        "\u2705 Connection pooling configured",
+        "\u2705 Eager loading prevents N+1"
+      ]
+    },
+    "overall": {
+      "score": 62.1,
+      "grade": "D",
+      "description": "Weighted average of all categories"
+    }
+  },
+  "cost_breakdown": {
+    "current": {
+      "anthropic_api": {
+        "monthly_cost": 340.0,
+        "percentage": 69.4,
+        "breakdown": {
+          "big_five_reports": 153.6,
+          "disc_reports": 31.5,
+          "chat_messages": 25.2,
+          "cache_misses": 130.0
+        }
+      },
+      "database": {
+        "monthly_cost": 50.0,
+        "percentage": 10.2
+      },
+      "hosting": {
+        "monthly_cost": 100.0,
+        "percentage": 20.4
+      },
+      "total": 490.0
+    },
+    "optimized": {
+      "anthropic_api": {
+        "monthly_cost": 170.0,
+        "savings": 170.0,
+        "breakdown": {
+          "big_five_reports": 60.0,
+          "disc_reports": 12.0,
+          "chat_messages": 18.0,
+          "cache_misses": 80.0
+        }
+      },
+      "redis": {
+        "monthly_cost": 10.0,
+        "new": true
+      },
+      "database": {
+        "monthly_cost": 50.0,
+        "savings": 0.0
+      },
+      "hosting": {
+        "monthly_cost": 100.0,
+        "savings": 0.0
+      },
+      "total": 330.0,
+      "total_savings": 160.0
+    }
+  },
+  "optimization_opportunities": [
+    {
+      "name": "Implement AI Report Caching",
+      "impact": "critical",
+      "monthly_savings": 450.0,
+      "annual_savings": 5400.0,
+      "effort": "easy",
+      "timeframe": "1 week",
+      "description": "Cache AI-generated reports by profile hash. Same Big Five scores = same report, but currently regenerated every time.",
+      "implementation_steps": [
+        "Deploy Redis cache instance ($10/month)",
+        "Add profile hash generation to report endpoint",
+        "Implement cache-first lookup pattern",
+        "Monitor cache hit rate (target: >80%)",
+        "Expected savings: $450/month with 85% hit rate"
+      ],
+      "priority": 8
+    },
+    {
+      "name": "Smart Model Routing",
+      "impact": "high",
+      "monthly_savings": 180.0,
+      "annual_savings": 2160.0,
+      "effort": "medium",
+      "timeframe": "2 weeks",
+      "description": "Route simple chat messages to Haiku (10x cheaper) instead of always using Sonnet.",
+      "implementation_steps": [
+        "Build intent classifier (rule-based)",
+        "Route greetings/FAQ to Haiku ($0.0008/$0.004)",
+        "Keep complex questions on Sonnet",
+        "A/B test quality with 10% traffic",
+        "Expected savings: $180/month (60% simple messages)"
+      ],
+      "priority": 5
+    },
+    {
+      "name": "Optimize Prompts",
+      "impact": "high",
+      "monthly_savings": 90.0,
+      "annual_savings": 1080.0,
+      "effort": "medium",
+      "timeframe": "1 week",
+      "description": "Reduce prompt tokens by 33% using structured XML instead of verbose prose.",
+      "implementation_steps": [
+        "Rewrite prompts using XML structure",
+        "Remove redundant examples and instructions",
+        "A/B test quality (target: >95% of original)",
+        "Roll out if quality maintained",
+        "Expected savings: $90/month"
+      ],
+      "priority": 5
+    },
+    {
+      "name": "Pre-generate Common Profiles",
+      "impact": "medium",
+      "monthly_savings": 30.0,
+      "annual_savings": 360.0,
+      "effort": "easy",
+      "timeframe": "3 days",
+      "description": "Pre-generate reports for 50 most common Big Five profiles at night.",
+      "implementation_steps": [
+        "Identify 50 most common score combinations",
+        "Add nightly job to pre-generate reports",
+        "Cache with 30-day TTL",
+        "Monitor cache hit rate increase",
+        "Expected savings: $30/month + faster UX"
+      ],
+      "priority": 5
+    },
+    {
+      "name": "Add Read Replicas",
+      "impact": "low",
+      "monthly_savings": 20.0,
+      "annual_savings": 240.0,
+      "effort": "medium",
+      "timeframe": "1 week",
+      "description": "Add database read replicas to distribute load (needed at >10K users).",
+      "implementation_steps": [
+        "Not urgent at current scale",
+        "Consider when query load exceeds 1M/month",
+        "Current: 187K queries/month",
+        "Monitor database CPU/memory usage"
+      ],
+      "priority": 3
+    }
+  ],
+  "architectural_recommendations": [
+    {
+      "category": "Caching Strategy",
+      "priority": "critical",
+      "current_state": "In-memory cache (15% hit rate)",
+      "target_state": "Redis-based multi-layer cache (85% hit rate)",
+      "impact": "50x faster responses, $450/month savings",
+      "timeline": "Week 1"
+    },
+    {
+      "category": "AI Model Selection",
+      "priority": "high",
+      "current_state": "Always Sonnet ($0.003/$0.015 per 1K)",
+      "target_state": "Dynamic routing (Haiku/Sonnet/Opus)",
+      "impact": "$180/month savings, same quality",
+      "timeline": "Week 2-3"
+    },
+    {
+      "category": "Prompt Engineering",
+      "priority": "high",
+      "current_state": "1,800 input tokens (verbose)",
+      "target_state": "1,200 input tokens (structured XML)",
+      "impact": "$90/month savings, same quality",
+      "timeline": "Week 2"
+    },
+    {
+      "category": "Database Optimization",
+      "priority": "medium",
+      "current_state": "Well optimized (N+1 fixed, indexes added)",
+      "target_state": "Add monitoring and slow query alerts",
+      "impact": "Minimal cost savings, better reliability",
+      "timeline": "Week 4"
+    },
+    {
+      "category": "Background Jobs",
+      "priority": "medium",
+      "current_state": "Blocking AI calls",
+      "target_state": "Async job queue with progress tracking",
+      "impact": "3x higher throughput, better UX",
+      "timeline": "Week 4"
+    }
+  ],
+  "performance_impact": {
+    "current": {
+      "p95_response_time_ms": 2800,
+      "cache_hit_rate": 15,
+      "throughput_req_per_sec": 425,
+      "concurrent_users_supported": 1000
+    },
+    "optimized": {
+      "p95_response_time_ms": 350,
+      "cache_hit_rate": 85,
+      "throughput_req_per_sec": 1200,
+      "concurrent_users_supported": 3000
+    },
+    "improvements": {
+      "response_time": "8x faster",
+      "cache_efficiency": "+70 points",
+      "throughput": "3x higher",
+      "capacity": "3x more users"
+    }
+  },
+  "implementation_roadmap": {
+    "phase_1": {
+      "name": "Quick Wins",
+      "timeline": "Week 1",
+      "effort_hours": 24,
+      "monthly_savings": 450.0,
+      "tasks": [
+        "Deploy Redis cache",
+        "Implement AI report caching",
+        "Add cost tracking dashboard"
+      ]
+    },
+    "phase_2": {
+      "name": "Medium Effort",
+      "timeline": "Week 2-3",
+      "effort_hours": 48,
+      "monthly_savings": 270.0,
+      "tasks": [
+        "Optimize prompts (33% token reduction)",
+        "Implement smart model routing",
+        "A/B test quality"
+      ]
+    },
+    "phase_3": {
+      "name": "Infrastructure",
+      "timeline": "Week 4",
+      "effort_hours": 24,
+      "monthly_savings": 30.0,
+      "tasks": [
+        "Database optimization",
+        "Async job processing",
+        "Monitoring setup"
+      ]
+    },
+    "total": {
+      "timeline": "4 weeks",
+      "effort_hours": 96,
+      "monthly_savings": 750.0,
+      "annual_savings": 9000.0
+    }
+  },
+  "risks": [
+    {
+      "risk": "Cache hit rate lower than expected",
+      "probability": "medium",
+      "impact": "high",
+      "mitigation": "Monitor closely, adjust TTL, investigate key generation"
+    },
+    {
+      "risk": "Quality degradation from optimizations",
+      "probability": "low",
+      "impact": "high",
+      "mitigation": "A/B test all changes, user surveys, rollback if needed"
+    },
+    {
+      "risk": "Redis outage",
+      "probability": "low",
+      "impact": "medium",
+      "mitigation": "Fallback to in-memory cache, graceful degradation"
+    },
+    {
+      "risk": "Model routing misclassifies messages",
+      "probability": "medium",
+      "impact": "medium",
+      "mitigation": "Conservative routing, thorough testing, manual overrides"
+    }
+  ],
+  "next_steps": [
+    {
+      "step": 1,
+      "action": "Review efficiency report with team",
+      "owner": "Tech Lead",
+      "deadline": "This week"
+    },
+    {
+      "step": 2,
+      "action": "Provision Redis instance",
+      "owner": "DevOps",
+      "deadline": "Week 1, Day 1"
+    },
+    {
+      "step": 3,
+      "action": "Implement AI report caching",
+      "owner": "Backend Team",
+      "deadline": "Week 1, Day 2-3"
+    },
+    {
+      "step": 4,
+      "action": "Deploy cost tracking dashboard",
+      "owner": "Frontend Team",
+      "deadline": "Week 1, Day 3"
+    },
+    {
+      "step": 5,
+      "action": "Monitor metrics and iterate",
+      "owner": "All",
+      "deadline": "Ongoing"
+    }
+  ]
+}

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kostnadsövervakning - Persona Admin</title>
+    <link rel="stylesheet" href="admin-costs.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <div class="header-content">
+                <a href="admin.html" class="back-link">← Tillbaka till Admin</a>
+                <h1>💰 Kostnadsövervakning</h1>
+                <p class="subtitle">Realtidsinsikter i kostnader och optimeringsmöjligheter</p>
+            </div>
+            <div class="header-actions">
+                <button onclick="exportCostReport()" class="export-btn">📊 Exportera Rapport</button>
+                <button onclick="loadCostDashboard()" class="refresh-btn">🔄 Uppdatera</button>
+            </div>
+        </header>
+
+        <!-- Quick Stats Summary -->
+        <section class="cost-summary">
+            <div class="stat-card today">
+                <div class="stat-icon">📅</div>
+                <h3>Idag</h3>
+                <div class="amount" id="todayCost">$0.00</div>
+                <div class="change" id="todayChange">Laddar...</div>
+            </div>
+
+            <div class="stat-card month">
+                <div class="stat-icon">📆</div>
+                <h3>Denna Månad</h3>
+                <div class="amount" id="monthCost">$0.00</div>
+                <div class="change" id="monthProgress">Laddar...</div>
+            </div>
+
+            <div class="stat-card projected">
+                <div class="stat-icon">📈</div>
+                <h3>Prognos</h3>
+                <div class="amount" id="projectedCost">$0.00</div>
+                <div class="alert" id="projectedAlert"></div>
+            </div>
+
+            <div class="stat-card budget">
+                <div class="stat-icon">💵</div>
+                <h3>Budget</h3>
+                <div class="amount" id="budgetAmount">$500.00</div>
+                <div class="status" id="budgetStatus">Laddar...</div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h2>Kostnadsfördelning</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="costBreakdownChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="breakdownLegend"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-card">
+                    <h2>Kostnadstrend (30 dagar)</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="costTrendChart"></canvas>
+                    </div>
+                    <div class="chart-info">
+                        <span class="info-item">
+                            <span class="dot actual"></span> Faktisk kostnad
+                        </span>
+                        <span class="info-item">
+                            <span class="dot budget"></span> Budget/dag
+                        </span>
+                        <span class="info-item">
+                            <span class="dot forecast"></span> Prognos
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Top Cost Drivers -->
+        <section class="cost-drivers-section">
+            <h2>Största Kostnadsdrivare</h2>
+            <div class="table-container">
+                <table class="cost-drivers-table">
+                    <thead>
+                        <tr>
+                            <th>Funktion</th>
+                            <th>Användning</th>
+                            <th>Kostnad</th>
+                            <th>% av Total</th>
+                            <th>Trend</th>
+                            <th>Åtgärder</th>
+                        </tr>
+                    </thead>
+                    <tbody id="costDriversBody">
+                        <tr>
+                            <td colspan="6" class="loading">Laddar data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Token Usage Analytics -->
+        <section class="token-analytics">
+            <h2>API-Tokenanvändning (Anthropic Claude)</h2>
+
+            <div class="token-breakdown">
+                <div class="token-stat">
+                    <h4>Input-Tokens (Denna Månad)</h4>
+                    <div class="big-number" id="inputTokens">0</div>
+                    <div class="cost" id="inputTokenCost">$0.00</div>
+                    <div class="detail">Input: $0.003 per 1K tokens</div>
+                </div>
+
+                <div class="token-stat">
+                    <h4>Output-Tokens (Denna Månad)</h4>
+                    <div class="big-number" id="outputTokens">0</div>
+                    <div class="cost" id="outputTokenCost">$0.00</div>
+                    <div class="detail">Output: $0.015 per 1K tokens</div>
+                </div>
+
+                <div class="token-stat highlight">
+                    <h4>Total AI-Kostnad</h4>
+                    <div class="big-number" id="totalAICost">$0.00</div>
+                    <div class="detail" id="aiCostPercent">0% av totalkostnad</div>
+                </div>
+            </div>
+
+            <div class="token-efficiency">
+                <h3>Effektivitetsmått</h3>
+                <div class="efficiency-grid">
+                    <div class="metric">
+                        <span class="metric-label">Genomsnittliga tokens per Big Five-rapport:</span>
+                        <strong id="avgTokensBigFive">3,245</strong>
+                        <span class="benchmark good">✅ (Branschsnitt: 4,100)</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Genomsnittliga tokens per DISC-rapport:</span>
+                        <strong id="avgTokensDISC">2,890</strong>
+                        <span class="benchmark good">✅ (Branschsnitt: 3,500)</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Genomsnittliga tokens per chattmeddelande:</span>
+                        <strong id="avgTokensChat">185</strong>
+                        <span class="benchmark good">✅ (Mål: &lt;200)</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Cache-träfffrekvens:</span>
+                        <strong id="cacheHitRate">85%</strong>
+                        <span class="benchmark excellent">🎯 Utmärkt!</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Optimization Opportunities -->
+        <section class="optimizations-section">
+            <h2>Optimeringsmöjligheter</h2>
+            <div class="optimizations-grid" id="optimizationsGrid">
+                <!-- Will be populated by JavaScript -->
+                <div class="optimization-card loading">
+                    <p>Laddar optimeringsförslag...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Budget Management -->
+        <section class="budget-section">
+            <h2>Budgethantering</h2>
+
+            <div class="budget-progress">
+                <div class="progress-header">
+                    <span id="budgetUsedText">$0 / $500 månadsbudget</span>
+                    <span id="budgetProjectionText">Prognos: $0 (0%)</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="budgetProgressFill" style="width: 0%">
+                        <span id="budgetProgressText">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="budget-grid">
+                <div class="budget-alerts">
+                    <h3>Varningskonfiguration</h3>
+                    <label class="alert-checkbox">
+                        <input type="checkbox" id="alert50" checked>
+                        <span>Varna vid 50% ($250)</span>
+                    </label>
+                    <label class="alert-checkbox">
+                        <input type="checkbox" id="alert80" checked>
+                        <span>Varna vid 80% ($400)</span>
+                    </label>
+                    <label class="alert-checkbox">
+                        <input type="checkbox" id="alert100" checked>
+                        <span>Varna vid 100% ($500)</span>
+                    </label>
+                    <label class="alert-checkbox">
+                        <input type="checkbox" id="alertProjected" checked>
+                        <span>Varna om prognos överstiger budget</span>
+                    </label>
+                    <button onclick="saveAlertSettings()" class="save-btn">Spara Inställningar</button>
+                </div>
+
+                <div class="budget-settings">
+                    <h3>Budgetinställningar</h3>
+                    <label for="monthlyBudget">Månadsbudget (USD):</label>
+                    <input type="number" id="monthlyBudget" value="500" min="0" step="50">
+                    <button onclick="updateBudget()" class="update-btn">Uppdatera Budget</button>
+
+                    <div class="budget-info">
+                        <p><strong>Tips:</strong> Baserat på nuvarande användning rekommenderas en budget på minst $480/månad.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Service Status -->
+        <section class="service-status-section">
+            <h2>Tjänstanvändning & Hälsa</h2>
+            <div class="table-container">
+                <table class="service-status-table">
+                    <thead>
+                        <tr>
+                            <th>Tjänst</th>
+                            <th>Status</th>
+                            <th>Kostnad/Månad</th>
+                            <th>Användning</th>
+                            <th>Aktivitet</th>
+                            <th>Åtgärd</th>
+                        </tr>
+                    </thead>
+                    <tbody id="serviceStatusBody">
+                        <tr>
+                            <td>
+                                <strong>Anthropic Claude API</strong>
+                                <div class="service-detail">AI-rapportgenerering & Chat</div>
+                            </td>
+                            <td><span class="status-badge operational">🟢 Operativ</span></td>
+                            <td class="cost-cell">$340.50</td>
+                            <td>42.3M tokens</td>
+                            <td>1,632 anrop</td>
+                            <td><button class="details-btn" onclick="showServiceDetails('claude')">Detaljer</button></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>PostgreSQL Database</strong>
+                                <div class="service-detail">Användardata & Rapporter</div>
+                            </td>
+                            <td><span class="status-badge operational">🟢 Operativ</span></td>
+                            <td class="cost-cell">$10.00</td>
+                            <td>2.4 GB lagring</td>
+                            <td>187K queries</td>
+                            <td><button class="details-btn" onclick="showServiceDetails('db')">Detaljer</button></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Vercel Hosting</strong>
+                                <div class="service-detail">Webbapplikation</div>
+                            </td>
+                            <td><span class="status-badge operational">🟢 Operativ</span></td>
+                            <td class="cost-cell">$5.00</td>
+                            <td>28.5K requests</td>
+                            <td>1.2 GB bandbredd</td>
+                            <td><button class="details-btn" onclick="showServiceDetails('hosting')">Detaljer</button></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Sentry Monitoring</strong>
+                                <div class="service-detail">Felrapportering</div>
+                            </td>
+                            <td><span class="status-badge operational">🟢 Operativ</span></td>
+                            <td class="cost-cell">$2.20</td>
+                            <td>Gratis nivå</td>
+                            <td>5K events/månad</td>
+                            <td><button class="details-btn" onclick="showServiceDetails('sentry')">Detaljer</button></td>
+                        </tr>
+                        <tr class="future-service">
+                            <td>
+                                <strong>Redis Cache</strong>
+                                <div class="service-detail">Cachning (rekommenderas)</div>
+                            </td>
+                            <td><span class="status-badge not-configured">⚪ Ej konfigurerad</span></td>
+                            <td class="cost-cell">$0.00</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><button class="setup-btn" onclick="setupRedis()">Konfigurera Redis</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <p>Senast uppdaterad: <span id="lastUpdated">Aldrig</span></p>
+            <p>Automatisk uppdatering var 5:e minut</p>
+        </footer>
+    </div>
+
+    <script src="admin-costs.js"></script>
+</body>
+</html>
