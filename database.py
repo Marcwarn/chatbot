@@ -526,8 +526,8 @@ class APIUsage(Base):
     cache_hit = Column(Boolean, default=False)
     execution_time_ms = Column(Float, nullable=True)
 
-    # Additional metadata
-    metadata = Column(JSON, nullable=True)
+    # Additional metadata (renamed to avoid conflict with SQLAlchemy reserved name)
+    api_metadata = Column(JSON, nullable=True)
 
     def to_dict(self):
         """Export usage data"""
@@ -544,7 +544,7 @@ class APIUsage(Base):
             "assessment_id": self.assessment_id,
             "cache_hit": self.cache_hit,
             "execution_time_ms": self.execution_time_ms,
-            "metadata": self.metadata
+            "metadata": self.api_metadata
         }
 
 
