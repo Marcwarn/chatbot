@@ -1056,11 +1056,10 @@ function answer(id, val) {
 
 async function sendResultsToBackend() {
     try {
-        await fetch('/disc/complete', {
+        // Save to main DISC backend
+        const discRes = await fetch('/disc/complete', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_id: userId,
                 session_id: sessionId,
@@ -1068,6 +1067,29 @@ async function sendResultsToBackend() {
                 scores: scores
             })
         });
+
+        // If this is an invite session, also save to invite
+        if (inviteToken) {
+            try {
+                let report = {};
+                if (discRes.ok) {
+                    report = await discRes.json().catch(() => ({}));
+                }
+                const profileCode = generateProfileType(scores);
+                const discScores = { D: scores.D, I: scores.I, S: scores.S, C: scores.C };
+                await fetch('/disc/invite/' + inviteToken + '/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        disc_scores: discScores,
+                        profile_code: profileCode,
+                        report: report
+                    })
+                });
+            } catch (invErr) {
+                console.warn('Could not save to invite:', invErr);
+            }
+        }
     } catch (error) {
         console.error('Failed to send results:', error);
     }
