@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DISC-analys – Din inbjudan</title>
+  <style>
+    :root {
+      --brand: #6366f1;
+      --brand-dark: #4f46e5;
+      --brand-light: #eef2ff;
+      --D: #ef4444; --I: #f59e0b; --S: #22c55e; --C: #3b82f6;
+      --text: #111827; --muted: #6b7280; --border: #e5e7eb;
+      --bg: #f9fafb; --card: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    .header { background: white; border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    .logo { width: 36px; height: 36px; background: var(--brand); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .logo svg { width: 20px; height: 20px; fill: white; }
+    .logo-text { font-size: 18px; font-weight: 700; color: var(--brand); }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+
+    .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card + .card { margin-top: 20px; }
+
+    .icon-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; }
+    .icon-circle.pending { background: var(--brand-light); }
+    .icon-circle.done { background: #f0fdf4; }
+    .icon-circle.waiting { background: #fefce8; }
+    .icon-circle.error { background: #fef2f2; }
+
+    h1 { font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); text-align: center; margin-bottom: 28px; line-height: 1.6; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; text-decoration: none; width: 100%; }
+    .btn-primary { background: var(--brand); color: white; }
+    .btn-primary:hover { background: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,.3); }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+
+    .info-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--muted); font-size: 14px; min-width: 120px; }
+    .info-value { font-weight: 600; }
+
+    /* DISC scores */
+    .disc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+    .disc-box { border-radius: 12px; padding: 16px; text-align: center; }
+    .disc-box.D { background: #fef2f2; border: 1px solid #fecaca; }
+    .disc-box.I { background: #fffbeb; border: 1px solid #fde68a; }
+    .disc-box.S { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .disc-box.C { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .disc-letter { font-size: 20px; font-weight: 800; }
+    .disc-letter.D { color: var(--D); }
+    .disc-letter.I { color: var(--I); }
+    .disc-letter.S { color: var(--S); }
+    .disc-letter.C { color: var(--C); }
+    .disc-score { font-size: 28px; font-weight: 700; margin: 4px 0; }
+    .disc-name { font-size: 12px; color: var(--muted); }
+    .bar-bg { background: #e5e7eb; border-radius: 4px; height: 8px; margin-top: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+    .bar-fill.D { background: var(--D); }
+    .bar-fill.I { background: var(--I); }
+    .bar-fill.S { background: var(--S); }
+    .bar-fill.C { background: var(--C); }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-done { background: #dcfce7; color: #166534; }
+    .badge-waiting { background: #fef9c3; color: #854d0e; }
+
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .report-section { margin-top: 24px; }
+    .report-section h3 { font-size: 15px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; }
+    .report-section p { font-size: 15px; line-height: 1.7; color: #374151; }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag { background: var(--brand-light); color: var(--brand); border-radius: 6px; padding: 4px 12px; font-size: 13px; font-weight: 500; }
+
+    .loading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 60px 0; }
+    .loading p { color: var(--muted); }
+
+    #app { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+  </div>
+  <span class="logo-text">DISC-analys</span>
+</div>
+
+<div class="container">
+  <!-- Loading -->
+  <div id="loading" class="card">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Hämtar din inbjudan…</p>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div id="error" class="card" style="display:none; text-align:center;">
+    <div class="icon-circle error" style="margin:0 auto 20px;">❌</div>
+    <h1>Inbjudan hittades inte</h1>
+    <p class="subtitle" id="error-msg">Länken är ogiltig eller har gått ut.</p>
+  </div>
+
+  <!-- Main app -->
+  <div id="app">
+
+    <!-- State: pending -->
+    <div id="view-pending" style="display:none;">
+      <div class="card">
+        <div class="icon-circle pending">👋</div>
+        <h1 id="pending-name">Hej!</h1>
+        <p class="subtitle">Du har blivit inbjuden att genomföra en DISC-personlighetsanalys. Testet tar ca 5–10 minuter och ger dig insikter om din kommunikationsstil och dina styrkor.</p>
+
+        <div style="background:var(--brand-light); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="font-weight:600; color: var(--brand); margin-bottom:8px;">🎯 Vad är DISC?</div>
+          <p style="font-size:14px; color:#374151; line-height:1.6;">DISC är ett välbeprövat verktyg för att förstå beteendestilar. Det mäter fyra dimensioner: <strong>Dominans</strong> (hur du hanterar utmaningar), <strong>Inflytande</strong> (hur du kommunicerar), <strong>Stabilitet</strong> (hur du svarar på tempo) och <strong>Följsamhet</strong> (hur du förhåller dig till regler).</p>
+        </div>
+
+        <a id="start-btn" href="#" class="btn btn-primary">
+          🚀 Starta DISC-analysen
+        </a>
+        <p style="text-align:center; font-size:13px; color:var(--muted); margin-top:12px;">Ditt svar sparas automatiskt och delas med din administratör.</p>
+      </div>
+    </div>
+
+    <!-- State: waiting for admin to share -->
+    <div id="view-waiting" style="display:none;">
+      <div class="card">
+        <div class="icon-circle waiting">⏳</div>
+        <h1>Test genomfört!</h1>
+        <p class="subtitle">Ditt DISC-test är sparad och skickad till din administratör. Du får tillgång till ditt resultat när de väljer att dela det med dig.</p>
+
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="badge badge-waiting">Väntar på delning</span>
+        </div>
+        <div class="info-row" id="wait-completed-at">
+          <span class="info-label">Genomfört</span>
+          <span class="info-value" id="wait-date">–</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Din profil</span>
+          <span class="info-value" id="wait-profile">–</span>
+        </div>
+
+        <div style="background:#fef9c3; border-radius:12px; padding:16px; margin-top:20px;">
+          <p style="font-size:14px; color:#713f12;">📬 Spara den här länken! Du kan komma tillbaka hit för att se ditt resultat när din administratör delar det.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- State: results shared! -->
+    <div id="view-results" style="display:none;">
+      <div class="card">
+        <div class="icon-circle done">🎉</div>
+        <h1 id="results-name">Din DISC-profil</h1>
+        <p class="subtitle" id="results-date"></p>
+
+        <div style="text-align:center; margin: 20px 0;">
+          <div style="font-size:48px; font-weight:800; color: var(--brand);" id="profile-code-big">–</div>
+          <div style="font-size:16px; color:var(--muted); margin-top:4px;" id="profile-name-display">–</div>
+        </div>
+
+        <div class="disc-grid" id="disc-grid"></div>
+
+        <div class="report-section" id="report-summary-section" style="display:none;">
+          <h3>Sammanfattning</h3>
+          <p id="report-summary"></p>
+        </div>
+
+        <div class="report-section" id="report-strengths-section" style="display:none;">
+          <h3>Dina styrkor</h3>
+          <div class="tag-list" id="report-strengths"></div>
+        </div>
+
+        <div class="report-section" id="report-dev-section" style="display:none;">
+          <h3>Utvecklingsområden</h3>
+          <div class="tag-list" id="report-dev"></div>
+        </div>
+
+        <div class="report-section" id="report-workstyle-section" style="display:none;">
+          <h3>Arbetsstil</h3>
+          <p id="report-workstyle"></p>
+        </div>
+
+        <div class="report-section" id="report-comm-section" style="display:none;">
+          <h3>Kommunikationsstil</h3>
+          <p id="report-comm"></p>
+        </div>
+
+        <!-- AI Insights -->
+        <div id="ai-insights" style="display:none; margin-top:24px; border-top: 1px solid var(--border); padding-top:24px;">
+          <h3 style="font-size:15px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:16px;">🤖 AI-insikter</h3>
+
+          <div class="report-section" id="ai-unique-section" style="display:none;">
+            <h3>Din unika kombination</h3>
+            <p id="ai-unique"></p>
+          </div>
+          <div class="report-section" id="ai-stress-section" style="display:none;">
+            <h3>Under press & stress</h3>
+            <p id="ai-stress"></p>
+          </div>
+          <div class="report-section" id="ai-leadership-section" style="display:none;">
+            <h3>Ledarstil</h3>
+            <p id="ai-leadership"></p>
+          </div>
+          <div class="report-section" id="ai-blindspots-section" style="display:none;">
+            <h3>Blinda fläckar</h3>
+            <div class="tag-list" id="ai-blindspots"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat CTA -->
+      <div class="card" style="text-align:center;">
+        <p style="font-size:18px; margin-bottom:8px;">💬 Vill du lära dig mer om din profil?</p>
+        <p style="color:var(--muted); margin-bottom:20px; font-size:14px;">Chatta med vår AI-coach för personliga råd baserade på just din DISC-profil.</p>
+        <a id="chat-btn" href="#" class="btn btn-primary">Starta DISC-coaching →</a>
+      </div>
+    </div>
+
+  </div><!-- #app -->
+</div><!-- .container -->
+
+<script>
+const DIM_NAMES = {
+  D: { sv: "Dominans", color: "#ef4444" },
+  I: { sv: "Inflytande", color: "#f59e0b" },
+  S: { sv: "Stabilitet", color: "#22c55e" },
+  C: { sv: "Följsamhet", color: "#3b82f6" }
+};
+
+function getToken() {
+  return new URLSearchParams(location.search).get("token");
+}
+
+function fmtDate(iso) {
+  if (!iso) return "–";
+  return new Date(iso).toLocaleDateString("sv-SE", { year:"numeric", month:"long", day:"numeric" });
+}
+
+function showError(msg) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("error").style.display = "";
+  document.getElementById("error-msg").textContent = msg;
+}
+
+function showView(name) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "";
+  ["pending","waiting","results"].forEach(v => {
+    document.getElementById("view-" + v).style.display = v === name ? "" : "none";
+  });
+}
+
+function renderDiscGrid(scores) {
+  const grid = document.getElementById("disc-grid");
+  grid.innerHTML = ["D","I","S","C"].map(d => {
+    const val = Math.round(scores[d] || scores[d.toLowerCase()] || 0);
+    return `<div class="disc-box ${d}">
+      <div class="disc-letter ${d}">${d}</div>
+      <div class="disc-score">${val}</div>
+      <div class="disc-name">${DIM_NAMES[d].sv}</div>
+      <div class="bar-bg"><div class="bar-fill ${d}" style="width:${val}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function renderReport(data) {
+  // Profile
+  const code = data.profile_code || "";
+  document.getElementById("profile-code-big").textContent = code;
+  document.getElementById("profile-name-display").textContent = data.report?.profile_name || "";
+
+  // Date
+  document.getElementById("results-date").textContent = "Genomfört " + fmtDate(data.completed_at);
+
+  // Scores
+  if (data.disc_scores) renderDiscGrid(data.disc_scores);
+
+  const report = data.report || {};
+
+  // Sections
+  if (report.summary) {
+    document.getElementById("report-summary").textContent = report.summary;
+    document.getElementById("report-summary-section").style.display = "";
+  }
+  if (report.strengths?.length) {
+    document.getElementById("report-strengths").innerHTML = report.strengths.map(s => `<span class="tag">${s}</span>`).join("");
+    document.getElementById("report-strengths-section").style.display = "";
+  }
+  if (report.development_areas?.length) {
+    document.getElementById("report-dev").innerHTML = report.development_areas.map(s => `<span class="tag">${s}</span>`).join("");
+    document.getElementById("report-dev-section").style.display = "";
+  }
+  if (report.work_style) {
+    document.getElementById("report-workstyle").textContent = report.work_style;
+    document.getElementById("report-workstyle-section").style.display = "";
+  }
+  if (report.communication_style) {
+    document.getElementById("report-comm").textContent = report.communication_style;
+    document.getElementById("report-comm-section").style.display = "";
+  }
+
+  // AI Insights
+  const pi = report.personalized_insights;
+  if (pi) {
+    document.getElementById("ai-insights").style.display = "";
+    if (pi.unique_combination) {
+      document.getElementById("ai-unique").textContent = pi.unique_combination;
+      document.getElementById("ai-unique-section").style.display = "";
+    }
+    if (pi.stress_triggers) {
+      document.getElementById("ai-stress").textContent = pi.stress_triggers;
+      document.getElementById("ai-stress-section").style.display = "";
+    }
+    if (pi.leadership_style) {
+      document.getElementById("ai-leadership").textContent = pi.leadership_style;
+      document.getElementById("ai-leadership-section").style.display = "";
+    }
+    if (pi.blind_spots?.length) {
+      document.getElementById("ai-blindspots").innerHTML = pi.blind_spots.map(s => `<span class="tag">${s}</span>`).join("");
+      document.getElementById("ai-blindspots-section").style.display = "";
+    }
+  }
+
+  // Chat link
+  const chatToken = encodeURIComponent(JSON.stringify({ scores: data.disc_scores, profile: code }));
+  document.getElementById("chat-btn").href = `/disc-assessment?chat=1&invite=${getToken()}`;
+}
+
+async function init() {
+  const token = getToken();
+  if (!token) { showError("Ingen inbjudningstoken angiven i URL:en."); return; }
+
+  try {
+    const res = await fetch(`/disc/invite/${token}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showError(err.detail || "Inbjudan hittades inte.");
+      return;
+    }
+    const invite = await res.json();
+
+    // Update start button
+    document.getElementById("start-btn").href = `/disc-assessment?invite=${token}`;
+    document.getElementById("pending-name").textContent = `Hej, ${invite.participant_name}! 👋`;
+    document.getElementById("results-name").textContent = `${invite.participant_name}s DISC-profil`;
+
+    if (invite.status === "pending") {
+      showView("pending");
+    } else if (invite.status === "completed" && !invite.allow_participant_view) {
+      // Show waiting state
+      document.getElementById("wait-date").textContent = fmtDate(invite.completed_at);
+      document.getElementById("wait-profile").textContent = invite.profile_code || "Beräknas…";
+      showView("waiting");
+    } else if (invite.status === "completed" && invite.allow_participant_view) {
+      // Fetch full report
+      const repRes = await fetch(`/disc/invite/${token}/report`);
+      if (repRes.ok) {
+        const data = await repRes.json();
+        renderReport(data);
+        showView("results");
+      } else {
+        showView("waiting");
+      }
+    } else {
+      showError("Inbjudan är utgången.");
+    }
+  } catch (e) {
+    showError("Kunde inte ansluta till servern. Försök igen.");
+  }
+}
+
+init();
+</script>
+</body>
+</html>
