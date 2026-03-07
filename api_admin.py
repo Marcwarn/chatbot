@@ -24,7 +24,7 @@ ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
 if not ADMIN_PASSWORD_HASH:
     raise ValueError(
         "SECURITY ERROR: ADMIN_PASSWORD_HASH must be set in environment variables!\n"
-        "Generate hash: python -c 'import bcrypt; print(bcrypt.hashpw(b"your_password", bcrypt.gensalt()).decode())'"
+        "Generate hash: python -c 'import bcrypt; print(bcrypt.hashpw(b\"your_password\", bcrypt.gensalt()).decode())'"
     )
 
 def hash_password(password: str) -> str:
