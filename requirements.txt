@@ -10,3 +10,4 @@ python-multipart>=0.0.9
 mangum>=0.17.0
 bcrypt>=4.0.0
 requests>=2.31.0
+sentry-sdk[fastapi,sqlalchemy]>=1.40.0
