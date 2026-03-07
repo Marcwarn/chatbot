@@ -495,6 +495,150 @@ class IncidentReport(Base):
 
 
 # ============================================================================
+# COST TRACKING MODELS
+# ============================================================================
+
+class APIUsage(Base):
+    """
+    Track API usage for cost analysis
+    Records all API calls with token counts and costs
+    """
+    __tablename__ = "api_usage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Service details
+    service = Column(String, nullable=False, index=True)  # "anthropic", "database", "hosting"
+    feature = Column(String, nullable=False, index=True)  # "report_generation", "chat", etc.
+
+    # Anthropic-specific fields
+    model = Column(String, nullable=True)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    cost = Column(Float, nullable=False)
+
+    # Context
+    user_id = Column(String, nullable=True, index=True)
+    assessment_id = Column(String, nullable=True, index=True)
+
+    # Optimization tracking
+    cache_hit = Column(Boolean, default=False)
+    execution_time_ms = Column(Float, nullable=True)
+
+    # Additional metadata
+    metadata = Column(JSON, nullable=True)
+
+    def to_dict(self):
+        """Export usage data"""
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "service": self.service,
+            "feature": self.feature,
+            "model": self.model,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cost": self.cost,
+            "user_id": self.user_id,
+            "assessment_id": self.assessment_id,
+            "cache_hit": self.cache_hit,
+            "execution_time_ms": self.execution_time_ms,
+            "metadata": self.metadata
+        }
+
+
+class CostBudget(Base):
+    """
+    Store budget settings and alerts
+    """
+    __tablename__ = "cost_budgets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Budget configuration
+    period = Column(String, nullable=False)  # "monthly", "daily", "weekly"
+    budget_amount = Column(Float, nullable=False)
+    currency = Column(String, default="USD")
+
+    # Alert settings
+    alert_thresholds = Column(JSON, nullable=False)  # [50, 80, 100] percentages
+    alert_enabled = Column(Boolean, default=True)
+    alert_email = Column(String, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    effective_from = Column(DateTime, default=datetime.utcnow)
+    effective_to = Column(DateTime, nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    def to_dict(self):
+        """Export budget configuration"""
+        return {
+            "id": self.id,
+            "period": self.period,
+            "budget_amount": self.budget_amount,
+            "currency": self.currency,
+            "alert_thresholds": self.alert_thresholds,
+            "alert_enabled": self.alert_enabled,
+            "alert_email": self.alert_email,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "effective_from": self.effective_from.isoformat(),
+            "effective_to": self.effective_to.isoformat() if self.effective_to else None,
+            "is_active": self.is_active
+        }
+
+
+class CostAlert(Base):
+    """
+    Store cost alert history
+    """
+    __tablename__ = "cost_alerts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Alert details
+    alert_level = Column(String, nullable=False)  # "green", "yellow", "orange", "red"
+    threshold_percentage = Column(Float, nullable=False)
+    current_spend = Column(Float, nullable=False)
+    budget_amount = Column(Float, nullable=False)
+    projected_spend = Column(Float, nullable=True)
+
+    # Message
+    message = Column(Text, nullable=False)
+    requires_action = Column(Boolean, default=False)
+
+    # Timestamps
+    triggered_at = Column(DateTime, default=datetime.utcnow, index=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+
+    # Status
+    status = Column(String, default="active")  # active, acknowledged, resolved
+
+    def to_dict(self):
+        """Export alert data"""
+        return {
+            "id": self.id,
+            "alert_level": self.alert_level,
+            "threshold_percentage": self.threshold_percentage,
+            "current_spend": self.current_spend,
+            "budget_amount": self.budget_amount,
+            "projected_spend": self.projected_spend,
+            "message": self.message,
+            "requires_action": self.requires_action,
+            "triggered_at": self.triggered_at.isoformat(),
+            "acknowledged_at": self.acknowledged_at.isoformat() if self.acknowledged_at else None,
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "status": self.status
+        }
+
+
+# ============================================================================
 # DATABASE SETUP
 # ============================================================================
 
