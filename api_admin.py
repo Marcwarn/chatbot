@@ -155,33 +155,33 @@ async def admin_logout(session: dict = Depends(verify_admin_token), authorizatio
 
 @router.get("/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(session: dict = Depends(verify_admin_token)):
-    """Get dashboard statistics"""
+    """Get dashboard statistics - supports both Big Five and DISC"""
 
     from api_main_gdpr import anthropic_client, _sessions, _user_profiles
+
+    # Initialize analytics engine
+    analytics = AdminAnalytics(_analytics)
 
     # Calculate stats from in-memory data
     total_assessments = len(_analytics["assessments"])
     total_users = len(_analytics["users"])
     chat_messages = _analytics["chat_messages"]
 
-    # Recent assessments
-    now = datetime.utcnow()
-    last_24h = sum(1 for a in _analytics["assessments"]
-                   if (now - datetime.fromisoformat(a["completed_at"])).total_seconds() < 86400)
-    last_7d = sum(1 for a in _analytics["assessments"]
-                  if (now - datetime.fromisoformat(a["completed_at"])).total_seconds() < 604800)
+    # Count by assessment type
+    big_five_count = sum(1 for a in _analytics["assessments"] if a.get("assessment_type") == "big_five")
+    disc_count = sum(1 for a in _analytics["assessments"] if a.get("assessment_type") == "disc")
 
-    # Average dimension scores
-    if _analytics["assessments"]:
-        avg_scores = {"E": 0, "A": 0, "C": 0, "N": 0, "O": 0}
-        for a in _analytics["assessments"]:
-            for dim, score in a["scores"].items():
-                if dim in avg_scores:
-                    avg_scores[dim] += score
-        for dim in avg_scores:
-            avg_scores[dim] /= len(_analytics["assessments"])
-    else:
-        avg_scores = {"E": 50, "A": 50, "C": 50, "N": 50, "O": 50}
+    # Recent assessments
+    recent_24h = analytics.get_assessments_last_24h()
+    recent_7d = analytics.get_assessments_last_7d()
+
+    # Average dimension scores (Big Five only for backward compatibility)
+    bf_stats = analytics.get_big_five_stats()
+    avg_scores = bf_stats["avg_scores"]
+
+    # Most popular assessment type
+    comparison = analytics.get_assessment_comparison()
+    most_popular = comparison["most_popular"]
 
     # API health
     api_health = "healthy" if anthropic_client else "api_key_missing"
@@ -190,11 +190,14 @@ async def get_dashboard_stats(session: dict = Depends(verify_admin_token)):
         total_assessments=total_assessments,
         total_users=total_users,
         total_chat_messages=chat_messages,
-        assessments_last_24h=last_24h,
-        assessments_last_7d=last_7d,
-        avg_completion_rate=95.0,  # Mock data
+        assessments_last_24h=recent_24h["total"],
+        assessments_last_7d=recent_7d["total"],
+        big_five_count=big_five_count,
+        disc_count=disc_count,
+        avg_completion_rate=95.0,
         top_dimensions=avg_scores,
-        api_health=api_health
+        api_health=api_health,
+        most_popular_type=most_popular
     )
 
 
