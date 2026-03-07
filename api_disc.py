@@ -39,7 +39,7 @@ from api_admin import track_assessment, track_chat_message, update_user_consents
 
 # ── Router Setup ─────────────────────────────────────────────────────────────
 
-router = APIRouter(prefix="/api/v1/disc", tags=["DISC Assessment"])
+router = APIRouter(prefix="/disc", tags=["DISC Assessment"])
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
 
