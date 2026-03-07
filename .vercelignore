@@ -1,0 +1,96 @@
+# Version Control
+.git
+.github
+.githooks
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.hypothesis
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+.venv
+venv/
+ENV/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+tests/
+test_*.py
+*_test.py
+
+# Documentation (keep only essential docs)
+*.md
+!README.md
+!DEPLOYMENT.md
+
+# Build artifacts
+dist/
+build/
+*.egg-info
+.eggs/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Development scripts
+run_*.sh
+setup_*.sh
+verify_*.sh
+setup-hooks.sh
+test-staging.sh
+
+# Analysis and monitoring (deploy monitoring tools separately)
+*_analyzer.py
+*_scanner.py
+security_scanner.py
+load_testing.py
+
+# Demo files (if not needed in production)
+demo*.html
+demo*.py
+streamlit_app.py
+
+# Examples and documentation
+LESSONS_LEARNED.md
+ARCHITECTURE.md
+*_GUIDE.md
+*_README.md
+*_SUMMARY.md
+*_SUMMARY.txt
+*_REFERENCE.md
+*_CHECKLIST.md
+*_REPORT.md
+REPOSITORY_OVERVIEW.md
+START_HERE.md
