@@ -1,0 +1,191 @@
+name: Monitor Vercel Deployments
+
+on:
+  # Run every 6 hours
+  schedule:
+    - cron: '0 */6 * * *'
+
+  # Allow manual triggering
+  workflow_dispatch:
+
+  # Run after deployments
+  workflow_run:
+    workflows: ["Deploy to Production", "Deploy to Staging"]
+    types:
+      - completed
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run deployment monitor
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          python3 vercel_monitor.py --detailed
+
+      - name: Generate reports
+        if: always()
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          python3 vercel_monitor.py --json > deployment-report.json
+          python3 vercel_monitor.py > deployment-report.txt
+
+      - name: Check deployment health
+        id: health_check
+        run: |
+          if grep -q "DEGRADED" deployment-report.txt; then
+            echo "health=degraded" >> $GITHUB_OUTPUT
+            echo "status=failure" >> $GITHUB_OUTPUT
+          elif grep -q "WARNING" deployment-report.txt; then
+            echo "health=warning" >> $GITHUB_OUTPUT
+            echo "status=warning" >> $GITHUB_OUTPUT
+          else
+            echo "health=healthy" >> $GITHUB_OUTPUT
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-reports-${{ github.run_number }}
+          path: |
+            deployment-report.txt
+            deployment-report.json
+          retention-days: 30
+
+      - name: Send Slack notification (degraded)
+        if: steps.health_check.outputs.health == 'degraded' && secrets.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "🚨 Vercel Deployment Health Alert",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 Deployment Health Degraded"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Vercel deployments are experiencing issues. Check the GitHub Actions logs for details."
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\nDEGRADED"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Send Slack notification (warning)
+        if: steps.health_check.outputs.health == 'warning' && secrets.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "⚠️ Vercel Deployment Warning",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "⚠️ Deployment Warnings Detected"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Vercel deployments have warnings. Review recommended."
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Create issue on failure
+        if: steps.health_check.outputs.health == 'degraded' && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('deployment-report.txt', 'utf8');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Vercel Deployment Health Degraded',
+              body: `## Deployment Health Alert\n\nAutomated monitoring detected degraded deployment health.\n\n### Report\n\n\`\`\`\n${report}\n\`\`\`\n\n### Actions\n\n1. Review the [deployment logs](https://vercel.com/dashboard)\n2. Check [VERCEL_DEPLOYMENT_GUIDE.md](./VERCEL_DEPLOYMENT_GUIDE.md) for solutions\n3. Run manual diagnostics: \`./monitor_deployments.sh\`\n\n### Links\n\n- [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n- [Vercel Dashboard](https://vercel.com/dashboard)`,
+              labels: ['deployment', 'automated', 'critical']
+            });
+
+      - name: Comment on recent PR if degraded
+        if: steps.health_check.outputs.health == 'degraded' && github.event_name == 'workflow_run'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('deployment-report.txt', 'utf8');
+
+            // Get the most recent merged PR
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 1
+            });
+
+            if (prs.length > 0 && prs[0].merged_at) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+                body: `## ⚠️ Deployment Health Alert\n\nThis PR may have caused deployment issues.\n\n<details>\n<summary>Deployment Report</summary>\n\n\`\`\`\n${report}\n\`\`\`\n\n</details>\n\nPlease investigate and follow up if needed.`
+              });
+            }
+
+      - name: Fail workflow if degraded
+        if: steps.health_check.outputs.health == 'degraded'
+        run: |
+          echo "Deployment health is degraded. Failing workflow."
+          exit 1
