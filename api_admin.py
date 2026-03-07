@@ -29,6 +29,8 @@ if not ADMIN_PASSWORD_HASH:
         "Generate hash: python -c 'import bcrypt; print(bcrypt.hashpw(b\"your_password\", bcrypt.gensalt()).decode())'"
     )
 
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+
 def hash_password(password: str) -> str:
     """Hash password with bcrypt (secure)"""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -61,6 +63,7 @@ def verify_admin_token(authorization: Optional[str] = Header(None)) -> dict:
 # ── Models ───────────────────────────────────────────────────────────────────
 
 class AdminLoginRequest(BaseModel):
+    username: str
     password: str
 
 class AdminLoginResponse(BaseModel):
@@ -124,9 +127,9 @@ _analytics: Dict[str, Any] = {
 async def admin_login(req: AdminLoginRequest):
     """Admin login - returns auth token"""
 
-    # Use constant-time password verification
-    if not verify_password(req.password, ADMIN_PASSWORD_HASH):
-        raise HTTPException(status_code=401, detail="Invalid password")
+    # Check username then password (constant-time)
+    if req.username != ADMIN_USERNAME or not verify_password(req.password, ADMIN_PASSWORD_HASH):
+        raise HTTPException(status_code=401, detail="Ogiltigt användarnamn eller lösenord")
 
     # Generate session token
     token = secrets.token_urlsafe(32)
