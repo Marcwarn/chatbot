@@ -318,6 +318,164 @@ class DeletionRequest(Base):
 
 
 # ============================================================================
+# SECURITY EVENT MODELS
+# ============================================================================
+
+class SecurityEvent(Base):
+    """
+    Track security events for monitoring and analytics
+    """
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Event details
+    event_type = Column(String, nullable=False)  # brute_force, sql_injection, etc.
+    severity = Column(String, nullable=False)     # low, medium, high, critical
+    client_ip = Column(String, nullable=False)
+    endpoint = Column(String, nullable=False)
+
+    # User context (if authenticated)
+    user_id = Column(String, nullable=True)
+
+    # Additional details
+    user_agent = Column(String, nullable=True)
+    details = Column(JSON, nullable=True)
+
+    # Timestamps
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Response
+    was_blocked = Column(Boolean, default=False)
+    block_duration = Column(Integer, nullable=True)  # seconds
+
+    def to_dict(self):
+        """Export event data"""
+        return {
+            "id": self.id,
+            "event_type": self.event_type,
+            "severity": self.severity,
+            "client_ip": self.client_ip,
+            "endpoint": self.endpoint,
+            "user_id": self.user_id,
+            "user_agent": self.user_agent,
+            "details": self.details,
+            "timestamp": self.timestamp.isoformat(),
+            "was_blocked": self.was_blocked,
+            "block_duration": self.block_duration
+        }
+
+
+class BlockedIP(Base):
+    """
+    Track blocked IPs
+    """
+    __tablename__ = "blocked_ips"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    ip_address = Column(String, nullable=False, unique=True, index=True)
+    reason = Column(String, nullable=False)
+    block_count = Column(Integer, default=1)  # Number of times blocked
+
+    # Timestamps
+    first_blocked_at = Column(DateTime, default=datetime.utcnow)
+    last_blocked_at = Column(DateTime, default=datetime.utcnow)
+    unblock_at = Column(DateTime, nullable=False, index=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_permanent = Column(Boolean, default=False)
+
+    def to_dict(self):
+        """Export blocked IP data"""
+        return {
+            "id": self.id,
+            "ip_address": self.ip_address,
+            "reason": self.reason,
+            "block_count": self.block_count,
+            "first_blocked_at": self.first_blocked_at.isoformat(),
+            "last_blocked_at": self.last_blocked_at.isoformat(),
+            "unblock_at": self.unblock_at.isoformat() if self.unblock_at else None,
+            "is_active": self.is_active,
+            "is_permanent": self.is_permanent
+        }
+
+
+class SecurityMetric(Base):
+    """
+    Store aggregated security metrics for analytics
+    """
+    __tablename__ = "security_metrics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    metric_type = Column(String, nullable=False)  # failed_logins, rate_violations, etc.
+    metric_value = Column(Integer, nullable=False)
+    time_bucket = Column(DateTime, nullable=False, index=True)  # Hourly buckets
+
+    # Additional context
+    metric_metadata = Column(JSON, nullable=True)
+
+    def to_dict(self):
+        """Export metric data"""
+        return {
+            "metric_type": self.metric_type,
+            "metric_value": self.metric_value,
+            "time_bucket": self.time_bucket.isoformat(),
+            "metadata": self.metric_metadata
+        }
+
+
+class IncidentReport(Base):
+    """
+    Store incident reports for major security events
+    """
+    __tablename__ = "incident_reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    incident_id = Column(String, unique=True, nullable=False)
+    incident_type = Column(String, nullable=False)
+    severity = Column(String, nullable=False)
+
+    # Incident details
+    client_ip = Column(String, nullable=False)
+    endpoint = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    full_report = Column(Text, nullable=True)
+
+    # Event references
+    related_events = Column(JSON, nullable=True)  # List of event IDs
+
+    # Timestamps
+    detected_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    # Status
+    status = Column(String, default="open")  # open, investigating, resolved, false_positive
+
+    # Actions taken
+    actions_taken = Column(JSON, nullable=True)
+
+    def to_dict(self):
+        """Export incident data"""
+        return {
+            "id": self.id,
+            "incident_id": self.incident_id,
+            "incident_type": self.incident_type,
+            "severity": self.severity,
+            "client_ip": self.client_ip,
+            "endpoint": self.endpoint,
+            "description": self.description,
+            "detected_at": self.detected_at.isoformat(),
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "status": self.status,
+            "actions_taken": self.actions_taken
+        }
+
+
+# ============================================================================
 # DATABASE SETUP
 # ============================================================================
 
@@ -404,6 +562,228 @@ class Database:
 
             session.commit()
             return len(old_assessments)
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    # ── Security Event Methods ──────────────────────────────────────────────
+
+    def log_security_event(
+        self,
+        event_type: str,
+        severity: str,
+        client_ip: str,
+        endpoint: str,
+        user_id: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        details: Optional[dict] = None,
+        was_blocked: bool = False,
+        block_duration: Optional[int] = None
+    ):
+        """Log a security event to database"""
+        session = self.get_session()
+
+        try:
+            event = SecurityEvent(
+                event_type=event_type,
+                severity=severity,
+                client_ip=client_ip,
+                endpoint=endpoint,
+                user_id=user_id,
+                user_agent=user_agent,
+                details=details,
+                was_blocked=was_blocked,
+                block_duration=block_duration
+            )
+
+            session.add(event)
+            session.commit()
+
+            return event.id
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def get_security_events(
+        self,
+        hours: int = 24,
+        event_type: Optional[str] = None,
+        client_ip: Optional[str] = None,
+        limit: int = 100
+    ):
+        """Get recent security events"""
+        session = self.get_session()
+
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+            query = session.query(SecurityEvent).filter(
+                SecurityEvent.timestamp >= cutoff
+            )
+
+            if event_type:
+                query = query.filter(SecurityEvent.event_type == event_type)
+
+            if client_ip:
+                query = query.filter(SecurityEvent.client_ip == client_ip)
+
+            events = query.order_by(SecurityEvent.timestamp.desc()).limit(limit).all()
+
+            return [e.to_dict() for e in events]
+
+        finally:
+            session.close()
+
+    def block_ip(
+        self,
+        ip_address: str,
+        reason: str,
+        duration_seconds: int,
+        is_permanent: bool = False
+    ):
+        """Block an IP address"""
+        session = self.get_session()
+
+        try:
+            # Check if IP already blocked
+            blocked = session.query(BlockedIP).filter(
+                BlockedIP.ip_address == ip_address,
+                BlockedIP.is_active == True
+            ).first()
+
+            if blocked:
+                # Update existing block
+                blocked.block_count += 1
+                blocked.last_blocked_at = datetime.utcnow()
+                blocked.unblock_at = datetime.utcnow() + timedelta(seconds=duration_seconds)
+                blocked.is_permanent = is_permanent
+                blocked.reason = reason
+            else:
+                # Create new block
+                blocked = BlockedIP(
+                    ip_address=ip_address,
+                    reason=reason,
+                    unblock_at=datetime.utcnow() + timedelta(seconds=duration_seconds) if not is_permanent else None,
+                    is_permanent=is_permanent
+                )
+                session.add(blocked)
+
+            session.commit()
+
+            return blocked.id
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def get_blocked_ips(self, include_expired: bool = False):
+        """Get list of blocked IPs"""
+        session = self.get_session()
+
+        try:
+            query = session.query(BlockedIP).filter(
+                BlockedIP.is_active == True
+            )
+
+            if not include_expired:
+                now = datetime.utcnow()
+                query = query.filter(
+                    (BlockedIP.is_permanent == True) |
+                    (BlockedIP.unblock_at > now)
+                )
+
+            blocked_ips = query.all()
+
+            return [ip.to_dict() for ip in blocked_ips]
+
+        finally:
+            session.close()
+
+    def is_ip_blocked(self, ip_address: str) -> bool:
+        """Check if IP is currently blocked"""
+        session = self.get_session()
+
+        try:
+            now = datetime.utcnow()
+
+            blocked = session.query(BlockedIP).filter(
+                BlockedIP.ip_address == ip_address,
+                BlockedIP.is_active == True,
+                (BlockedIP.is_permanent == True) |
+                (BlockedIP.unblock_at > now)
+            ).first()
+
+            return blocked is not None
+
+        finally:
+            session.close()
+
+    def cleanup_expired_blocks(self):
+        """Remove expired IP blocks"""
+        session = self.get_session()
+
+        try:
+            now = datetime.utcnow()
+
+            expired = session.query(BlockedIP).filter(
+                BlockedIP.is_active == True,
+                BlockedIP.is_permanent == False,
+                BlockedIP.unblock_at <= now
+            ).all()
+
+            for block in expired:
+                block.is_active = False
+
+            session.commit()
+
+            return len(expired)
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def create_incident_report(
+        self,
+        incident_id: str,
+        incident_type: str,
+        severity: str,
+        client_ip: str,
+        endpoint: str,
+        description: str,
+        full_report: Optional[str] = None,
+        related_events: Optional[list] = None,
+        actions_taken: Optional[dict] = None
+    ):
+        """Create an incident report"""
+        session = self.get_session()
+
+        try:
+            report = IncidentReport(
+                incident_id=incident_id,
+                incident_type=incident_type,
+                severity=severity,
+                client_ip=client_ip,
+                endpoint=endpoint,
+                description=description,
+                full_report=full_report,
+                related_events=related_events,
+                actions_taken=actions_taken
+            )
+
+            session.add(report)
+            session.commit()
+
+            return report.id
 
         except Exception as e:
             session.rollback()
