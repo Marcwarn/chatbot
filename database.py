@@ -412,8 +412,15 @@ class Database:
             session.close()
 
 
-# Initialize database
-db = Database()
+# Initialize database with environment variable support
+import os
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./assessment_gdpr.db")
+
+# Vercel Postgres URLs use 'postgres://' but SQLAlchemy needs 'postgresql://'
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+db = Database(DATABASE_URL)
 
 if __name__ == "__main__":
     # Create tables

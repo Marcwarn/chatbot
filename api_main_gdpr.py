@@ -22,9 +22,13 @@ from database import (
 )
 from api_gdpr import router as gdpr_router
 from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
+from monitoring import init_sentry, rate_limit_middleware
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 db.create_tables()
+
+# Initialize Sentry monitoring
+init_sentry()
 
 app = FastAPI(
     title="Persona – Big Five Assessment API",
@@ -32,6 +36,7 @@ app = FastAPI(
     version="3.0.0",
 )
 
+# Add middlewares
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,6 +44,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting middleware
+app.middleware("http")(rate_limit_middleware)
 
 app.include_router(gdpr_router)
 app.include_router(admin_router)
