@@ -39,6 +39,10 @@ app = FastAPI(
     version="3.0.0",
 )
 
+@app.on_event("startup")
+async def startup_event():
+    db.create_tables()
+
 # Add middlewares
 # CORS Configuration - Explicit whitelist (SECURITY)
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
