@@ -794,6 +794,7 @@ function drawChart(display) {
 
 let chatHistory = [];
 let isChatLoading = false;
+let userId = null; // Generated when starting assessment
 
 function renderChat() {
     const dims = ["E","A","C","N","O"];
@@ -972,8 +973,18 @@ async function callChatAPI(message) {
         profileScores[d] = d === "N" ? getNScore(scores[d]) : scores[d];
     });
 
-    // Get conversation history (excluding the current message which we're sending)
-    const history = chatHistory.filter(msg => msg.role !== 'user' || msg.content !== message);
+    // Ensure userId exists
+    if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Get conversation history in correct format
+    const history = chatHistory
+        .filter(msg => msg.role !== 'user' || msg.content !== message)
+        .map(msg => ({
+            role: msg.role,
+            content: msg.content
+        }));
 
     try {
         const response = await fetch('/api/v1/chat', {
@@ -982,13 +993,17 @@ async function callChatAPI(message) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                user_id: userId,
                 message: message,
                 profile_scores: profileScores,
-                conversation_history: history
+                conversation_history: history,
+                include_profile: true
             })
         });
 
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API error:', response.status, errorText);
             throw new Error(`API error: ${response.status}`);
         }
 
@@ -1035,6 +1050,7 @@ function toggleConsent(id) {
 function startTest() {
     qIdx = 0;
     answers = {};
+    userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     view = "question";
     render();
 }
