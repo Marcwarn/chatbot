@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deltagare – Admin</title>
+  <style>
+    :root {
+      --brand: #6366f1; --brand-dark: #4f46e5; --brand-light: #eef2ff;
+      --D: #ef4444; --I: #f59e0b; --S: #22c55e; --C: #3b82f6;
+      --text: #111827; --muted: #6b7280; --border: #e5e7eb;
+      --bg: #f3f4f6; --card: #ffffff; --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+
+    /* Sidebar layout */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #1e1b4b; color: white; flex-shrink: 0; display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 20px; font-size: 18px; font-weight: 700; color: #a5b4fc; border-bottom: 1px solid #312e81; }
+    .sidebar-nav { padding: 12px 0; flex: 1; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: #c7d2fe; cursor: pointer; transition: background .15s; text-decoration: none; }
+    .nav-item:hover, .nav-item.active { background: #312e81; color: white; }
+    .nav-item svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid #312e81; }
+    .logout-btn { font-size: 13px; color: #a5b4fc; cursor: pointer; background: none; border: none; }
+    .logout-btn:hover { color: white; }
+
+    .main { flex: 1; overflow: auto; }
+    .topbar { background: white; border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar h1 { font-size: 20px; font-weight: 700; }
+    .topbar-actions { display: flex; gap: 10px; }
+
+    .content { padding: 24px; }
+
+    /* Cards */
+    .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .card-body { padding: 20px; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--brand); color: white; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .btn-success:hover { background: #dcfce7; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 16px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 10px 16px; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); background: var(--bg); }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Badge */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-pending { background: #fef3c7; color: #92400e; }
+    .badge-done { background: #dcfce7; color: #166534; }
+    .badge-expired { background: #f3f4f6; color: var(--muted); }
+    .badge-shared { background: var(--brand-light); color: var(--brand-dark); }
+
+    /* DISC mini */
+    .disc-mini { display: flex; gap: 4px; }
+    .disc-pip { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-direction: column; }
+    .disc-pip.D { background: #fef2f2; color: var(--D); }
+    .disc-pip.I { background: #fffbeb; color: var(--I); }
+    .disc-pip.S { background: #f0fdf4; color: var(--S); }
+    .disc-pip.C { background: #eff6ff; color: var(--C); }
+    .disc-pip-score { font-size: 9px; font-weight: 600; opacity: .8; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+    .modal { background: white; border-radius: 16px; max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color .15s; }
+    .form-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+    .form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Toggle switch */
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #d1d5db; border-radius: 24px; cursor: pointer; transition: .2s; }
+    .toggle-slider::before { content: ""; position: absolute; left: 4px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: .2s; }
+    input:checked + .toggle-slider { background: var(--brand); }
+    input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* Copy input */
+    .copy-group { display: flex; gap: 8px; }
+    .copy-input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--muted); font-family: monospace; }
+
+    /* Detail sections */
+    .detail-section { margin-top: 20px; }
+    .detail-section h4 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; }
+    .detail-section p { font-size: 14px; line-height: 1.7; color: #374151; }
+    .detail-disc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+    .detail-disc-box { border-radius: 10px; padding: 12px; text-align: center; }
+    .detail-disc-box.D { background: #fef2f2; } .detail-disc-box.I { background: #fffbeb; }
+    .detail-disc-box.S { background: #f0fdf4; } .detail-disc-box.C { background: #eff6ff; }
+    .bar-bg { background: #e5e7eb; border-radius: 4px; height: 6px; margin-top: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+    .bar-fill.D { background: var(--D); } .bar-fill.I { background: var(--I); }
+    .bar-fill.S { background: var(--S); } .bar-fill.C { background: var(--C); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; z-index: 200; transition: opacity .3s; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">🎯 Admin</div>
+    <nav class="sidebar-nav">
+      <a href="/admin" class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Dashboard
+      </a>
+      <a href="/admin-participants" class="nav-item active">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Deltagare
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="logout()">← Logga ut</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Login screen (shown if not authenticated) -->
+    <div id="login-screen" style="display:none; min-height:100vh; display:none; align-items:center; justify-content:center; background:var(--bg);">
+      <div style="background:white; border-radius:16px; padding:40px; max-width:380px; width:100%; border:1px solid var(--border);">
+        <h2 style="margin-bottom:20px; font-size:20px;">Admin-inloggning</h2>
+        <div class="form-group">
+          <label class="form-label">Lösenord</label>
+          <input type="password" id="login-pw" class="form-input" placeholder="Admin-lösenord" onkeydown="if(e.key==='Enter')doLogin()" />
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Logga in</button>
+        <p id="login-err" style="color:var(--danger); font-size:13px; margin-top:10px; display:none;"></p>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div id="main-content" style="display:none;">
+      <div class="topbar">
+        <h1>👥 Deltagare</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openCreateModal()">+ Skapa inbjudan</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">–</div>
+            <div class="stat-label">Totalt inbjudna</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-completed">–</div>
+            <div class="stat-label">Genomförda</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-pending">–</div>
+            <div class="stat-label">Väntar</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-shared">–</div>
+            <div class="stat-label">Resultat delade</div>
+          </div>
+        </div>
+
+        <!-- Participants table -->
+        <div class="card">
+          <div class="card-header">
+            <span style="font-weight:700;">Alla deltagare</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadInvites()">↻ Uppdatera</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Namn</th>
+                  <th>E-post</th>
+                  <th>Grupp</th>
+                  <th>Status</th>
+                  <th>DISC-profil</th>
+                  <th>Datum</th>
+                  <th>Delat</th>
+                  <th>Åtgärder</th>
+                </tr>
+              </thead>
+              <tbody id="invites-tbody">
+                <tr><td colspan="8" style="text-align:center; padding:40px; color:var(--muted);"><div class="spinner"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Invite Modal -->
+<div id="create-modal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Skapa inbjudan</h2>
+      <button class="modal-close" onclick="closeModal('create-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Namn *</label>
+          <input type="text" id="new-name" class="form-input" placeholder="Anna Andersson" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-post</label>
+          <input type="email" id="new-email" class="form-input" placeholder="anna@exempel.se" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Grupp</label>
+          <input type="text" id="new-group" class="form-input" placeholder="t.ex. Säljteam, Ledning" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giltig (dagar)</label>
+          <input type="number" id="new-expires" class="form-input" value="30" min="1" max="365" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Anteckningar (intern)</label>
+        <input type="text" id="new-notes" class="form-input" placeholder="Valfria anteckningar…" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-modal')">Avbryt</button>
+      <button class="btn btn-primary" onclick="createInvite()">Skapa inbjudan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="detail-title">Deltagarens rapport</h2>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body">
+      <div style="text-align:center; padding:30px;"><div class="spinner"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Stäng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+let adminToken = localStorage.getItem("admin_token");
+let _invites = [];
+
+async function checkAuth() {
+  if (!adminToken) { showLogin(); return; }
+  const res = await fetch("/disc/invite/admin/list", {
+    headers: { "Authorization": "Bearer " + adminToken }
+  });
+  if (res.status === 401) { showLogin(); return; }
+  showMain();
+  const data = await res.json().catch(() => ({ invites: [] }));
+  _invites = data.invites || [];
+  renderStats();
+  renderTable();
+}
+
+function showLogin() {
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("main-content").style.display = "none";
+}
+
+function showMain() {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("main-content").style.display = "";
+}
+
+async function doLogin() {
+  const pw = document.getElementById("login-pw").value;
+  const res = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: pw })
+  });
+  if (!res.ok) {
+    const err = document.getElementById("login-err");
+    err.style.display = "";
+    err.textContent = "Fel lösenord.";
+    return;
+  }
+  const data = await res.json();
+  adminToken = data.token;
+  localStorage.setItem("admin_token", adminToken);
+  showMain();
+  loadInvites();
+}
+
+function logout() {
+  localStorage.removeItem("admin_token");
+  adminToken = null;
+  showLogin();
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+async function loadInvites() {
+  const res = await fetch("/disc/invite/admin/list", {
+    headers: { "Authorization": "Bearer " + adminToken }
+  });
+  if (res.status === 401) { showLogin(); return; }
+  const data = await res.json();
+  _invites = data.invites || [];
+  renderStats();
+  renderTable();
+}
+
+function renderStats() {
+  const total = _invites.length;
+  const completed = _invites.filter(i => i.status === "completed").length;
+  const pending = _invites.filter(i => i.status === "pending").length;
+  const shared = _invites.filter(i => i.allow_participant_view).length;
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-completed").textContent = completed;
+  document.getElementById("stat-pending").textContent = pending;
+  document.getElementById("stat-shared").textContent = shared;
+}
+
+const DIM_NAMES = { D:"Dominans", I:"Inflytande", S:"Stabilitet", C:"Följsamhet" };
+
+function discMini(scores, code) {
+  if (!scores) return `<span style="color:var(--muted);font-size:13px;">–</span>`;
+  return `<div class="disc-mini">` + ["D","I","S","C"].map(d => {
+    const val = Math.round(scores[d] || scores[d.toLowerCase()] || 0);
+    return `<div class="disc-pip ${d}">${d}<div class="disc-pip-score">${val}</div></div>`;
+  }).join("") + `</div>`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return "–";
+  return new Date(iso).toLocaleDateString("sv-SE", { day:"numeric", month:"short", year:"numeric" });
+}
+
+function statusBadge(status, allowed) {
+  if (status === "pending") return `<span class="badge badge-pending">⏳ Väntar</span>`;
+  if (status === "expired") return `<span class="badge badge-expired">Utgången</span>`;
+  if (status === "completed" && allowed) return `<span class="badge badge-shared">✓ Delat</span>`;
+  if (status === "completed") return `<span class="badge badge-done">✓ Genomfört</span>`;
+  return `<span class="badge">${status}</span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById("invites-tbody");
+  if (!_invites.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">👤</div><p>Inga deltagare än. Skapa din första inbjudan!</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _invites.map(inv => `
+    <tr>
+      <td><strong>${esc(inv.participant_name)}</strong></td>
+      <td style="color:var(--muted);font-size:13px;">${esc(inv.participant_email || "–")}</td>
+      <td style="color:var(--muted);font-size:13px;">${esc(inv.group_name || "–")}</td>
+      <td>${statusBadge(inv.status, inv.allow_participant_view)}</td>
+      <td>${discMini(inv.disc_scores, inv.profile_code)}${inv.profile_code ? `<div style="font-size:12px;color:var(--brand);font-weight:700;margin-top:2px;">${inv.profile_code}</div>` : ""}</td>
+      <td style="font-size:13px;color:var(--muted);">${fmtDate(inv.completed_at || inv.created_at)}</td>
+      <td>
+        <label class="toggle" title="${inv.allow_participant_view ? 'Dölj resultat' : 'Dela resultat'}">
+          <input type="checkbox" ${inv.allow_participant_view ? "checked" : ""} ${inv.status !== "completed" ? "disabled" : ""}
+            onchange="toggleShare('${inv.token}', this.checked)" />
+          <span class="toggle-slider"></span>
+        </label>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="copyLink('${inv.token}')">🔗 Kopiera</button>
+          ${inv.status === "completed" ? `<button class="btn btn-success btn-sm" onclick="viewDetail('${inv.token}')">📋 Rapport</button>` : ""}
+          <button class="btn btn-danger btn-sm" onclick="deleteInvite('${inv.token}', '${esc(inv.participant_name)}')">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function toggleShare(token, allowed) {
+  const res = await fetch(`/disc/invite/${token}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": "Bearer " + adminToken,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ allow_participant_view: allowed })
+  });
+  if (res.ok) {
+    const inv = _invites.find(i => i.token === token);
+    if (inv) inv.allow_participant_view = allowed;
+    renderStats();
+    renderTable();
+    toast(allowed ? "✅ Resultat delat med deltagaren" : "🔒 Delning avstängd");
+  } else {
+    toast("❌ Kunde inte uppdatera", true);
+    loadInvites(); // Reload to reset toggle
+  }
+}
+
+async function deleteInvite(token, name) {
+  if (!confirm(`Radera inbjudan för ${name}? All data raderas permanent.`)) return;
+  const res = await fetch(`/disc/invite/${token}`, {
+    method: "DELETE",
+    headers: { "Authorization": "Bearer " + adminToken }
+  });
+  if (res.ok) {
+    _invites = _invites.filter(i => i.token !== token);
+    renderStats();
+    renderTable();
+    toast("🗑 Inbjudan raderad");
+  }
+}
+
+function copyLink(token) {
+  const url = `${location.origin}/invite?token=${token}`;
+  navigator.clipboard.writeText(url).then(() => toast("🔗 Länk kopierad!"));
+}
+
+async function viewDetail(token) {
+  const inv = _invites.find(i => i.token === token);
+  if (!inv) return;
+
+  document.getElementById("detail-title").textContent = inv.participant_name + "s DISC-rapport";
+  document.getElementById("detail-modal").style.display = "flex";
+
+  const body = document.getElementById("detail-body");
+  body.innerHTML = `<div style="text-align:center;padding:20px;"><div class="spinner"></div></div>`;
+
+  // Fetch full data from admin endpoint
+  const res = await fetch(`/disc/invite/admin/${token}`, {
+    headers: { "Authorization": "Bearer " + adminToken }
+  });
+  const data = await res.json();
+  const report = data.report || {};
+  const scores = data.disc_scores || {};
+  const pi = report.personalized_insights || {};
+
+  const inviteUrl = `${location.origin}/invite?token=${token}`;
+
+  body.innerHTML = `
+    <div style="margin-bottom:16px;">
+      <div class="copy-group">
+        <input class="copy-input" value="${inviteUrl}" readonly />
+        <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${inviteUrl}').then(()=>toast('Kopierat!'))">Kopiera</button>
+      </div>
+      <p class="form-hint">Skicka den här länken till deltagaren</p>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+      <div>
+        <div style="font-weight:700;">Dela med deltagaren</div>
+        <div style="font-size:13px;color:var(--muted);">Deltagaren kan se sin rapport via inbjudningslänken</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="detail-share-toggle" ${data.allow_participant_view ? "checked" : ""}
+          onchange="toggleShare('${token}', this.checked)" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    ${data.status === "completed" ? `
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:40px;font-weight:800;color:var(--brand);">${data.profile_code || "–"}</div>
+      <div style="color:var(--muted);font-size:14px;">${report.profile_name || ""}</div>
+    </div>
+
+    <div class="detail-disc-grid">
+      ${["D","I","S","C"].map(d => {
+        const val = Math.round(scores[d] || scores[d.toLowerCase()] || 0);
+        return `<div class="detail-disc-box ${d}">
+          <div style="font-size:16px;font-weight:700;">${d}</div>
+          <div style="font-size:22px;font-weight:800;">${val}</div>
+          <div style="font-size:11px;color:var(--muted);">${DIM_NAMES[d]}</div>
+          <div class="bar-bg"><div class="bar-fill ${d}" style="width:${val}%"></div></div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    ${report.summary ? `<div class="detail-section"><h4>Sammanfattning</h4><p>${esc(report.summary)}</p></div>` : ""}
+    ${report.work_style ? `<div class="detail-section"><h4>Arbetsstil</h4><p>${esc(report.work_style)}</p></div>` : ""}
+    ${pi.unique_combination ? `<div class="detail-section"><h4>Unik kombination</h4><p>${esc(pi.unique_combination)}</p></div>` : ""}
+    ${pi.stress_triggers ? `<div class="detail-section"><h4>Under press & stress</h4><p>${esc(pi.stress_triggers)}</p></div>` : ""}
+    ${pi.leadership_style ? `<div class="detail-section"><h4>Ledarstil</h4><p>${esc(pi.leadership_style)}</p></div>` : ""}
+    ${data.notes ? `<div class="detail-section"><h4>Anteckningar</h4><p>${esc(data.notes)}</p></div>` : ""}
+    ` : `<div class="empty-state"><div class="icon">⏳</div><p>Deltagaren har inte genomfört testet än.</p></div>`}
+  `;
+}
+
+// ── Create Invite ─────────────────────────────────────────────────────────────
+function openCreateModal() {
+  document.getElementById("new-name").value = "";
+  document.getElementById("new-email").value = "";
+  document.getElementById("new-group").value = "";
+  document.getElementById("new-notes").value = "";
+  document.getElementById("new-expires").value = "30";
+  document.getElementById("create-modal").style.display = "flex";
+  setTimeout(() => document.getElementById("new-name").focus(), 100);
+}
+
+async function createInvite() {
+  const name = document.getElementById("new-name").value.trim();
+  if (!name) { alert("Namn är obligatoriskt"); return; }
+
+  const body = {
+    participant_name: name,
+    participant_email: document.getElementById("new-email").value.trim() || null,
+    group_name: document.getElementById("new-group").value.trim() || null,
+    notes: document.getElementById("new-notes").value.trim() || null,
+    expires_days: parseInt(document.getElementById("new-expires").value) || 30
+  };
+
+  const res = await fetch("/disc/invite", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + adminToken, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    closeModal("create-modal");
+    _invites.unshift(data.invite);
+    renderStats();
+    renderTable();
+    // Show the link immediately
+    const url = `${location.origin}/invite?token=${data.token}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    toast(`✅ Inbjudan skapad för ${name}! Länk kopierad.`);
+  } else {
+    const err = await res.json().catch(() => ({}));
+    toast(`❌ ${err.detail || "Kunde inte skapa inbjudan"}`, true);
+  }
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+function esc(str) {
+  return String(str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+let toastTimer;
+function toast(msg, isErr = false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.background = isErr ? "#dc2626" : "#1f2937";
+  el.style.display = "";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
+}
+
+// Close modals on overlay click
+["create-modal","detail-modal"].forEach(id => {
+  document.getElementById(id).addEventListener("click", e => {
+    if (e.target.id === id) closeModal(id);
+  });
+});
+
+// Keyboard shortcut: Enter in login
+document.getElementById("login-pw")?.addEventListener("keydown", e => {
+  if (e.key === "Enter") doLogin();
+});
+
+checkAuth();
+</script>
+</body>
+</html>
