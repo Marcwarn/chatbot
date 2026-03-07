@@ -1,6 +1,7 @@
 """
 Admin API - Service Management & Analytics
 Provides administrative endpoints for monitoring and managing the service
+Supports both Big Five and DISC assessments
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Header
@@ -11,6 +12,7 @@ import os
 import hashlib
 import secrets
 import bcrypt
+from admin_analytics import AdminAnalytics
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -72,20 +74,27 @@ class DashboardStats(BaseModel):
     total_chat_messages: int
     assessments_last_24h: int
     assessments_last_7d: int
+    big_five_count: int
+    disc_count: int
     avg_completion_rate: float
     top_dimensions: Dict[str, float]
     api_health: str
+    most_popular_type: str
 
 class UserInfo(BaseModel):
     user_id: str
     assessments_count: int
+    big_five_count: int
+    disc_count: int
     last_activity: Optional[datetime]
+    last_assessment_type: Optional[str]
     consents: Dict[str, bool]
     has_chat_profile: bool
 
 class AssessmentInfo(BaseModel):
     assessment_id: str
     user_id: str
+    assessment_type: str
     completed_at: datetime
     scores: Dict[str, float]
     language: str
