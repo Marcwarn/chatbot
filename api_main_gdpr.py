@@ -29,10 +29,7 @@ from monitoring import init_sentry, rate_limit_middleware
 from cost_tracker import cost_tracker
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
-db.create_tables()
-
-# Initialize Sentry monitoring
-init_sentry()
+# db.create_tables() moved to startup event to avoid Lambda import crash
 
 app = FastAPI(
     title="Persona – Big Five Assessment API",
@@ -42,7 +39,14 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    db.create_tables()
+    try:
+        db.create_tables()
+    except Exception as e:
+        print(f"Warning: Could not create DB tables: {e}")
+    try:
+        init_sentry()
+    except Exception as e:
+        print(f"Warning: Sentry init failed: {e}")
 
 # Add middlewares
 # CORS Configuration - Explicit whitelist (SECURITY)
@@ -880,3 +884,4 @@ async def intelligent_chat(req: EnhancedChatRequest):
         )
     finally:
         session.close()
+
