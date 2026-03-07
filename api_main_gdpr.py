@@ -302,11 +302,17 @@ class DimensionScore(BaseModel):
 class PersonalizedReport(BaseModel):
     """AI-generated personalized insights based on unique trait combination"""
     profile_overview: str
+    unique_combination: str
     work_style: str
     communication_style: str
-    career_suggestions: List[str]
+    stress_behavior: str
+    decision_style: str
+    leadership_style: str
     relationship_insights: str
+    blind_spots: str
+    career_suggestions: List[str]
     development_areas: List[str]
+    collaboration_tips: str
 
 
 class AssessmentResultOut(BaseModel):
@@ -420,50 +426,134 @@ def generate_personalized_report(
     is_swedish = lang == "sv"
     lang_name = "svenska" if is_swedish else "English"
 
-    prompt = f"""Du är en expert på personlighetspsykologi och Big Five-modellen (OCEAN) med 20+ års erfarenhet. Du ska skapa en EXCEPTIONELLT djup och personaliserad rapport baserad på följande Big Five-profil (percentiler 0-100, där 50 är median):
+    # Determine level descriptions for richer context
+    def level_desc(val, high_sv, mid_sv, low_sv):
+        if val >= 65: return high_sv
+        if val <= 35: return low_sv
+        return mid_sv
 
-**Profil:**
-- Extraversion: {profile_data['Extraversion']:.1f}
-- Vänlighet (Agreeableness): {profile_data['Agreeableness']:.1f}
-- Samvetsgrannhet (Conscientiousness): {profile_data['Conscientiousness']:.1f}
-- Emotionell stabilitet (inverted Neuroticism): {profile_data['Emotional_Stability']:.1f}
-- Öppenhet (Openness): {profile_data['Openness']:.1f}
+    E = profile_data["Extraversion"]
+    A = profile_data["Agreeableness"]
+    C = profile_data["Conscientiousness"]
+    ES = profile_data["Emotional_Stability"]
+    O = profile_data["Openness"]
 
-**Uppgift:** Skriv en ovanligt insiktsfull, personlig rapport på {lang_name} som går DJUPT på KOMBINATIONEN av dessa drag. Detta är inte en generisk sammanfattning - det ska kännas som en personlig coaching-session där du verkligen FÖRSTÅR personen.
+    e_desc = level_desc(E,
+        "Hög Extraversion (>65): Energiladdad av sociala situationer, söker stimulans, pratar för att tänka, behöver variation, tar initiativ naturligt, kan uppfattas som dominant eller påträngande i tysta grupper.",
+        "Medel Extraversion (35-65): Ambivert — trivs socialt men behöver återhämtning, anpassar energi efter kontext, varken renodlat introvert eller extrovert.",
+        "Låg Extraversion (<35): Introvert — energi hämtas från ensamhet/reflektion, lyssnar mer än pratar, föredrar djupa 1-1-samtal framför nätverkande, kan uppfattas som tillbakadragen men har starkt inre liv.")
 
-**Format (returnera som JSON):**
-```json
+    a_desc = level_desc(A,
+        "Hög Vänlighet (>65): Empatisk, samarbetsorienterad, undviker konflikter, prioriterar andras behov, kan ha svårt att säga nej, sätter relationer före resultat, förtjänar djupt förtroende.",
+        "Medel Vänlighet (35-65): Balanserad — kan samarbeta men hävdar egna åsikter, varken pushover eller aggressiv.",
+        "Låg Vänlighet (<35): Direkt, skeptisk, resultatorienterad framför relationsorientierad, tävlingsinriktad, kan uppfattas som hård men är ofta ärlig och effektiv.")
+
+    c_desc = level_desc(C,
+        "Hög Samvetsgrannhet (>65): Organiserad, pålitlig, planerar noggrant, håller deadlines, hög impulskontroll, kan bli rigid eller perfektionistisk, levererar konsekvent.",
+        "Medel Samvetsgrannhet (35-65): Balanserad — kan planera men anpassar sig, varken kaotisk eller rigid.",
+        "Låg Samvetsgrannhet (<35): Spontan, flexibel, börjar gärna nytt innan gammalt är klart, kreativ i kaos, kan ha svårt med rutiner och långsiktiga åtaganden.")
+
+    es_desc = level_desc(ES,
+        "Hög Emotionell stabilitet (>65): Lugn under press, snabb återhämtning, låg oro, ibland svårt att förstå andras ångest, fungerar bra i kris.",
+        "Medel Emotionell stabilitet (35-65): Normal känslosamhet — stressas av verkliga påfrestningar men återhämtar sig.",
+        "Låg Emotionell stabilitet (<35): Hög känslighet — upplever oro, stämningssvängningar och stress mer intensivt än andra, stark empati, kreativ men sårbar under hög belastning.")
+
+    o_desc = level_desc(O,
+        "Hög Öppenhet (>65): Intellektuellt nyfiken, kreativ, gillar abstrakt tänkande och nya idéer, kan tycka rutinarbete är tråkigt, innovativ men ibland orealistisk.",
+        "Medel Öppenhet (35-65): Pragmatisk balans mellan nytänkande och beprövad metod.",
+        "Låg Öppenhet (<35): Praktisk, traditionell, föredrar konkret och beprövat framför experimentellt, pålitlig och jordnära, kan vara motståndare till snabb förändring.")
+
+    prompt = f"""Du är en av världens ledande experter på personlighetspsykologi, Big Five-modellen (OCEAN/IPIP) och tillämpad coaching. Du ska skapa en EXCEPTIONELLT djup, vetenskapligt förankrad och personaliserad rapport för följande profil.
+
+═══════════════════════════════════════════════
+BIG FIVE-PROFIL (percentiler 0-100, median=50)
+═══════════════════════════════════════════════
+• Extraversion (E): {E:.1f}/100 — {e_desc}
+• Vänlighet/Agreeableness (A): {A:.1f}/100 — {a_desc}
+• Samvetsgrannhet/Conscientiousness (C): {C:.1f}/100 — {c_desc}
+• Emotionell stabilitet (ES, inv. N): {ES:.1f}/100 — {es_desc}
+• Öppenhet/Openness (O): {O:.1f}/100 — {o_desc}
+
+═══════════════════════════════════════════════
+BIG FIVE-RAMVERK (din kunskapsbas)
+═══════════════════════════════════════════════
+
+**Dimensionsfacetter (NEO-PI-R):**
+- E-facetter: värme, sällskaplighet, dominans, aktivitet, spänningssökande, positiva emotioner
+- A-facetter: tillit, uppriktighet, altruism, eftergivenhet, blygsamt uppträdande, ömhet
+- C-facetter: kompetens, ordning, plikttrohet, prestationssträvan, självdisciplin, eftertänksamhet
+- N-facetter (inverted=ES): oro, arga känslor, depression, självmedvetenhet, impulsivitet, sårbarhet
+- O-facetter: fantasi, estetik, känslor, handlingar, idéer, värderingar
+
+**Draginteraktioner — exempel på kombinationer:**
+- Hög E + Hög A = Karismatisk, värmer upp rum, diplomatisk ledare
+- Hög E + Låg A = Aggressiv charmör, dominerar möten, tävlingsinriktad
+- Hög E + Hög C = Effektiv organisatör, driver projekt framåt med social energi
+- Hög E + Låg C = Spontan social fjäril, startar många saker, fullföljer sällan
+- Låg E + Hög C = Tyst men extremt pålitlig, utmärkt analytiker/specialist
+- Låg E + Låg A = Oberoende och kritisk, bäst i ensamarbete med tydliga mål
+- Hög O + Hög E = Visionär kommunikatör, inspirerar med idéer
+- Hög O + Låg C = Kreativ kaos, genial men ostrukturerad
+- Hög O + Hög C = Kreativ strukturerare, kan ta abstrakta idéer hela vägen till leverans
+- Låg O + Hög C = Mästare på att optimera beprövade system
+- Hög A + Hög C = Pålitlig teamspelare, levererar och tar hand om andra
+- Hög A + Låg C = Godhjärtad och flexibel, lätt att ta för given
+- Låg ES + Hög O = Intensivt kreativ med djup känsloliv
+- Låg ES + Hög A = Hypersensitiv för andras behov, riskerar utbrändhet
+- Hög ES + Låg A = Effektiv och rationell, uppfattas ibland som kall
+- Hög ES + Hög C = Stabil prestationsmaskin, exceptionell under press
+
+**Stress-reaktioner per dimension:**
+- Hög N (låg ES): Katastrofiserar, grubbleri, söker bekräftelse, kan bli paralyserad
+- Hög E under stress: Söker distraktion/sällskap, pratar mer, kan bli impulsiv
+- Hög A under stress: Sätter andras behov sist, sväljer ilska, riskerar inre koka
+- Hög C under stress: Överplanerar, becomes rigid, kan bli micro-manager
+- Hög O under stress: Eskapism via nya projekt/idéer, flyr från det verkliga problemet
+
+**Engagemang per dimension:**
+- Hög E engageras av: variation, sociala utmaningar, synliga roller, erkännande
+- Hög A engageras av: meningsfull hjälp, harmoni, teamarbete, att göra skillnad
+- Hög C engageras av: tydliga mål, struktur, mätbara framsteg, att leverera kvalitet
+- Hög ES engageras av: stabilitet, kontroll, förutsägbarhet, att vara resursen för andra
+- Hög O engageras av: nyheter, intellektuella utmaningar, kreativ frihet, lärande
+
+═══════════════════════════════════════════════
+UPPGIFT: Generera djup personlig rapport på {lang_name}
+═══════════════════════════════════════════════
+
+Returnera ENBART giltig JSON (inget annat):
+
 {{
-  "profile_overview": "3-4 meningar som fångar personens UNIKA kombination av drag med SPECIFIKA exempel på hur de samverkar. Börja med 'Din personlighet kännetecknas av...' och GE KONKRETA SCENARION (t.ex. 'När du står inför ett beslut tenderar du att...')",
+  "profile_overview": "4-5 meningar som fångar personens UNIKA kombination. BÖRJA med 'Din personlighet kombinerar...' och beskriv HUR de specifika dimensionerna interagerar och skapar en unik helhet. Ge 2-3 konkreta scenarion från vardagslivet.",
 
-  "work_style": "4-5 meningar om EXAKT hur personen arbetar optimalt. Inkludera: idealisk arbetsmiljö (öppet kontor vs eget rum? Musik vs tystnad?), beslutsfattande (snabbt vs analytiskt?), energihantering över dagen, projektarbete vs självständigt arbete, hur de hanterar deadlines och stress. GE KONKRETA EXEMPEL och HANDLINGSBARA TIPS.",
+  "unique_combination": "2-3 meningar om vad som gör JUST DENNA kombination av alla 5 dimensioner unik. Vad är personens 'superkraft' som uppstår ur kombinationen? Vad är det paradoxala eller overraskande med deras profil?",
 
-  "communication_style": "4-5 meningar om kommunikation med DJUPA insikter. Hur de tar emot kritik? Hur de ger feedback? Skillnad mellan skriftlig vs muntlig kommunikation? Hur de bygger förtroende? Vad som händer i konflikter? Hur de påverkar gruppdynamik? KONKRETA EXEMPEL och COACHANDE RÅD.",
+  "work_style": "5-6 meningar om arbetsoptimering. Täck: idealisk miljö (öppet/eget rum, ljud), energihantering, beslutsprocess, hur de hanterar deadlines, produktivitetstoppar, vad som dränerar energi. SPECIFIKA och ACTIONABLE.",
 
-  "career_suggestions": ["5-7 MYCKET SPECIFIKA karriärvägar/roller med kort motivering för varje. Inte bara 'UX-designer' utan 'UX-designer på produktteam (din kombination av kreativitet och empati gör dig perfekt för användarforskning och iterativt designarbete)'. VERKLIGT SPECIFIKA JOBBTITLAR."],
+  "communication_style": "4-5 meningar. Hur de föredrar att ge/ta emot information, kommunicerar under stress vs lugna lägen, hanterar konflikter och kritik, påverkar mötesdynamik, bygger förtroende. KONKRETA EXEMPEL.",
 
-  "relationship_insights": "4-5 meningar om relationer (vänskap, romantik, team) med OVANLIG DJUP. Vad händer när personen blir stressad? Hur uttrycker de kärlek/uppskattning? Vad är deras 'osynliga gåvor' i relationer? Blinda fläckar? Hur kan partners/vänner KONKRET stötta dem? ACTIONABLE INSIGHTS.",
+  "stress_behavior": "4-5 meningar om hur JUST DENNA profil reagerar på stress. Vilka triggers? Vad händer beteendemässigt? Tidiga varningssignaler? SPECIFIKA återhämtningsstrategier anpassade till profilen. Vad hjälper och vad förvärrar?",
 
-  "development_areas": ["3-4 utvecklingsområden med MYCKET KONKRETA, STEG-FÖR-STEG råd. Varje råd ska innehålla: (1) VAD problemet är, (2) VARFÖR det uppstår baserat på deras profil, (3) EXAKT HUR de kan jobba med det (specifika verktyg, övningar, mindsets). Exempel: 'Din höga öppenhet + låga samvetsgrannhet kan göra att projekt förblir halvfärdiga. PROVA: (1) Börja varje måndag med att välja MAX 3 projekt att fokusera på, (2) Använd Pomodoro (25 min fokus) för att kanalisera kreativitet till färdigställande, (3) Belöna dig när saker blir klara (din hjärna behöver dopamin-kickar för att bygga completion-vana).'"]
+  "decision_style": "3-4 meningar. Analytisk vs intuitiv? Snabb vs genomtänkt? Beslutar ensam vs i grupp? Hur hanterar personen osäkerhet och tvetydighet? Vad händer vid beslutsstress?",
+
+  "leadership_style": "3-4 meningar om ledarskap eller teamroll. Naturlig ledartyp (coach, strateg, demokrat, specialist?) baserat på profilen. Hur motiverar de andra? Blinda fläckar som ledare/kollega?",
+
+  "relationship_insights": "4-5 meningar om relationer (privat, romantik, vänskap, kollegor). Hur uttrycker personen omsorg? Vad behöver de från nära relationer? Konfliktmönster? 'Osynliga gåvor' i relationer? Hur kan andra BÄST stötta dem?",
+
+  "blind_spots": "3-4 meningar om de 2-3 viktigaste blinda fläckarna som uppstår ur KOMBINATIONEN av deras drag. Var riskerar personen att skada relationer eller karriär utan att märka det? KONKRETA och ÄRLIGA men konstruktiva.",
+
+  "career_suggestions": ["6-8 SPECIFIKA karriärvägar/roller med 1-mening motivering kopplad till deras specifika profil. Ej generiska titlar — ge kontext. Ex: 'Produktchef på tech-bolag (din E+C+O-kombination gör dig perfekt för att driva roadmap med social energi och struktur)'"],
+
+  "development_areas": ["3-4 utvecklingsområden med STEG-FÖR-STEG råd. Format per punkt: (1) VAD utmaningen är, (2) VARFÖR den uppstår just ur deras profil, (3) EXAKT HUR de kan jobba med det — specifika övningar, verktyg, mindshifts. Gör det practisk och omedelbart användbart."],
+
+  "collaboration_tips": "3-4 meningar. Hur de bäst samarbetar med OLIKA personlighetstyper. Vem är de komplementärt till? Vem riskerar de att krocka med och varför? Konkreta tips för att möta 'svåra' personlighetstyper."
 }}
-```
 
-**KRITISKA KVALITETSKRAV:**
-1. **DJUP ANALYS av draginteraktioner** - Hur påverkar hög E + låg C SPECIFIKT arbetsvanor? Ge exempel!
-2. **KONKRET och ACTIONABLE** - Varje insikt ska leda till handling
-3. **PERSONLIGT och VARMT** - Skriv som en erfaren coach som bryr sig
-4. **NUANSERAT** - Både styrkor OCH utmaningar, men alltid konstruktivt
-5. **SPECIFIKA EXEMPEL** - "När du..." scenarios som personen känner igen sig i
-6. **"DU"-FORM** genomgående
-7. **LÄNGRE ÄN VANLIGT** - Detta ska vara en DJUP rapport, inte ytlig
-
-GÖR DETTA EXCEPTIONELLT BRA. Personen ska känna "WOW, detta beskriver MIG på djupet!"
-
-Generera rapporten nu:"""
+KRAV: Inga generiska eller klyscheartade formuleringar. Varje mening ska vara specifik för JUST DENNA profil. Personen ska känna "detta är exakt jag"."""
 
     try:
         message = anthropic_client.messages.create(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             max_tokens=4000,  # Increased for deeper, more detailed reports
             temperature=0.7,
             messages=[{"role": "user", "content": prompt}]
@@ -471,7 +561,7 @@ Generera rapporten nu:"""
 
         # Track API cost
         cost_tracker.track_anthropic_call(
-            model="claude-sonnet-4-5-20250929",
+            model="claude-sonnet-4-6",
             input_tokens=message.usage.input_tokens,
             output_tokens=message.usage.output_tokens,
             purpose="report_generation",
@@ -489,12 +579,18 @@ Generera rapporten nu:"""
         data = json.loads(response_text)
 
         return PersonalizedReport(
-            profile_overview=data["profile_overview"],
-            work_style=data["work_style"],
-            communication_style=data["communication_style"],
-            career_suggestions=data["career_suggestions"],
-            relationship_insights=data["relationship_insights"],
-            development_areas=data["development_areas"],
+            profile_overview=data.get("profile_overview", ""),
+            unique_combination=data.get("unique_combination", ""),
+            work_style=data.get("work_style", ""),
+            communication_style=data.get("communication_style", ""),
+            stress_behavior=data.get("stress_behavior", ""),
+            decision_style=data.get("decision_style", ""),
+            leadership_style=data.get("leadership_style", ""),
+            relationship_insights=data.get("relationship_insights", ""),
+            blind_spots=data.get("blind_spots", ""),
+            career_suggestions=data.get("career_suggestions", []),
+            development_areas=data.get("development_areas", []),
+            collaboration_tips=data.get("collaboration_tips", ""),
         )
 
     except Exception as e:
