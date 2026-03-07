@@ -226,3 +226,5 @@ MIT License
 ---
 
 **Byggd med ❤️ för bättre självkännedom och personlig utveckling**
+
+<!-- deploy trigger -->
