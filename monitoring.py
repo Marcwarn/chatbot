@@ -430,6 +430,174 @@ class SecurityEventStore:
 security_events = SecurityEventStore()
 
 
+# ── Request Fingerprinting ──────────────────────────────────────────────────
+
+class RequestFingerprint:
+    """
+    Generate fingerprints to detect automated attacks
+    Helps identify bots, scrapers, and attack tools
+    """
+
+    @staticmethod
+    def generate(request: Request) -> str:
+        """Generate fingerprint from request characteristics"""
+        import hashlib
+
+        # Collect fingerprint components
+        components = [
+            request.headers.get("user-agent", ""),
+            request.headers.get("accept-language", ""),
+            request.headers.get("accept-encoding", ""),
+            str(request.client.host if request.client else ""),
+        ]
+
+        fingerprint = "|".join(components)
+        return hashlib.md5(fingerprint.encode()).hexdigest()
+
+    @staticmethod
+    def is_suspicious(user_agent: str) -> Dict[str, any]:
+        """Analyze user agent for suspicious patterns"""
+        ua_lower = user_agent.lower()
+
+        suspicious = {
+            "is_suspicious": False,
+            "reasons": []
+        }
+
+        # Check for missing or suspicious user agents
+        if not user_agent or user_agent == "-":
+            suspicious["is_suspicious"] = True
+            suspicious["reasons"].append("Missing user agent")
+
+        # Check for old browsers (potential bot)
+        if "msie" in ua_lower or "windows nt 5" in ua_lower:
+            suspicious["is_suspicious"] = True
+            suspicious["reasons"].append("Outdated browser")
+
+        # Check for automation tools
+        automation_tools = [
+            "curl", "wget", "python-requests", "axios", "got",
+            "postman", "insomnia", "httpie", "scrapy"
+        ]
+        for tool in automation_tools:
+            if tool in ua_lower:
+                suspicious["is_suspicious"] = True
+                suspicious["reasons"].append(f"Automation tool: {tool}")
+                break
+
+        return suspicious
+
+
+# ── Honeypot Detection ──────────────────────────────────────────────────────
+
+class HoneypotDetector:
+    """
+    Honeypot fields and endpoints to detect scanners and bots
+    """
+
+    def __init__(self):
+        # Track honeypot triggers
+        self.triggers: Dict[str, List[float]] = defaultdict(list)
+
+        # Honeypot field names (should never be filled by real users)
+        self.honeypot_fields = [
+            "website",
+            "url",
+            "homepage",
+            "email_confirm",
+            "user_email",  # Different from 'email'
+        ]
+
+        # Honeypot endpoints (should never be accessed)
+        self.honeypot_endpoints = [
+            "/admin/login.php",
+            "/wp-admin",
+            "/phpmyadmin",
+            "/.env",
+            "/config.php",
+            "/backup.sql",
+        ]
+
+    def check_field(self, field_name: str, field_value: any) -> bool:
+        """Check if a honeypot field was filled (bot detected)"""
+        if field_name in self.honeypot_fields and field_value:
+            return True
+        return False
+
+    def check_endpoint(self, endpoint: str) -> bool:
+        """Check if honeypot endpoint was accessed"""
+        return any(hp in endpoint for hp in self.honeypot_endpoints)
+
+    def record_trigger(self, client_ip: str):
+        """Record honeypot trigger"""
+        now = time.time()
+        self.triggers[client_ip].append(now)
+
+        # Clean old triggers (24 hour window)
+        self.triggers[client_ip] = [
+            t for t in self.triggers[client_ip]
+            if now - t < 86400
+        ]
+
+
+# Global honeypot detector
+honeypot_detector = HoneypotDetector()
+
+
+# ── Advanced Attack Detection ────────────────────────────────────────────────
+
+def detect_credential_stuffing(client_ip: str, endpoint: str, username: str) -> bool:
+    """
+    Detect credential stuffing attacks
+    Multiple login attempts with different usernames from same IP
+    """
+    if not endpoint.endswith("/login"):
+        return False
+
+    key = f"cred_stuff:{client_ip}"
+
+    # This would need Redis in production for distributed tracking
+    # For now, using in-memory (limited to single instance)
+
+    # Check if same IP is trying multiple different usernames
+    # Threshold: 10 different usernames in 5 minutes
+    return False  # Placeholder - implement with Redis
+
+
+def detect_path_traversal(path: str) -> Optional[str]:
+    """Detect path traversal attempts"""
+    patterns = [
+        r"\.\./",
+        r"\.\.",
+        r"%2e%2e",
+        r"\.\.%2f",
+        r"%252e%252e",
+    ]
+
+    for pattern in patterns:
+        if re.search(pattern, path, re.IGNORECASE):
+            return pattern
+
+    return None
+
+
+def detect_command_injection(input_data: str) -> Optional[str]:
+    """Detect command injection attempts"""
+    patterns = [
+        r";\s*(ls|cat|wget|curl|nc|bash|sh|python)",
+        r"\|\s*(ls|cat|wget|curl|nc|bash|sh|python)",
+        r"`.*`",
+        r"\$\(.*\)",
+        r"&&\s*(ls|cat|wget|curl|nc|bash|sh|python)",
+    ]
+
+    for pattern in patterns:
+        if re.search(pattern, input_data, re.IGNORECASE):
+            return pattern
+
+    return None
+
+
 # ── Analytics Tracking ───────────────────────────────────────────────────────
 
 def track_api_call(endpoint: str, user_id: str = None, duration_ms: float = 0):
@@ -447,3 +615,107 @@ def track_api_call(endpoint: str, user_id: str = None, duration_ms: float = 0):
                 "duration_ms": duration_ms
             }
         )
+
+
+# ── Comprehensive Security Middleware ────────────────────────────────────────
+
+async def comprehensive_security_middleware(request: Request, call_next):
+    """
+    Comprehensive security middleware that runs all checks
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    endpoint = request.url.path
+    user_agent = request.headers.get("user-agent", "")
+
+    # 1. Check if IP is blocked
+    if attack_detector.is_ip_blocked(client_ip):
+        security_events.add_event(
+            SecurityEventType.DOS_ATTEMPT,
+            client_ip,
+            endpoint,
+            {"reason": "IP temporarily blocked"}
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden. Your IP has been temporarily blocked due to suspicious activity."
+        )
+
+    # 2. Check honeypot endpoints
+    if honeypot_detector.check_endpoint(endpoint):
+        honeypot_detector.record_trigger(client_ip)
+        security_events.add_event(
+            SecurityEventType.HONEYPOT_TRIGGERED,
+            client_ip,
+            endpoint,
+            {"user_agent": user_agent}
+        )
+
+        # Auto-block after honeypot trigger
+        attack_detector.block_ip(client_ip, duration_seconds=7200)  # 2 hours
+
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # 3. Check for scanner user agents
+    if attack_detector.detect_scanner(user_agent):
+        security_events.add_event(
+            SecurityEventType.SCANNER_DETECTED,
+            client_ip,
+            endpoint,
+            {"user_agent": user_agent}
+        )
+
+        # Block scanner IPs
+        attack_detector.block_ip(client_ip, duration_seconds=3600)  # 1 hour
+
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # 4. Check request fingerprint for suspicious patterns
+    fingerprint_check = RequestFingerprint.is_suspicious(user_agent)
+    if fingerprint_check["is_suspicious"]:
+        security_events.add_event(
+            SecurityEventType.SUSPICIOUS_PATTERN,
+            client_ip,
+            endpoint,
+            {
+                "reasons": fingerprint_check["reasons"],
+                "user_agent": user_agent
+            }
+        )
+
+    # 5. Check for DoS patterns
+    if attack_detector.detect_dos(client_ip, endpoint):
+        security_events.add_event(
+            SecurityEventType.DOS_ATTEMPT,
+            client_ip,
+            endpoint,
+            {"user_agent": user_agent}
+        )
+
+        # Auto-block aggressive DoS attempts
+        attack_detector.block_ip(client_ip, duration_seconds=1800)  # 30 minutes
+
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please slow down."
+        )
+
+    # 6. Check path traversal in URL
+    path_attack = detect_path_traversal(str(request.url))
+    if path_attack:
+        security_events.add_event(
+            SecurityEventType.SUSPICIOUS_PATTERN,
+            client_ip,
+            endpoint,
+            {"attack_type": "path_traversal", "pattern": path_attack}
+        )
+        raise HTTPException(status_code=400, detail="Invalid request")
+
+    # Continue with request
+    start_time = time.time()
+    response = await call_next(request)
+    duration = (time.time() - start_time) * 1000
+
+    # Track successful request
+    track_api_call(endpoint, None, duration)
+
+    return response

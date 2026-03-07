@@ -471,6 +471,100 @@ def stream_large_export(session, user_id: str):
 
 
 # ============================================================================
+# IN-MEMORY CACHING (For systems without Redis)
+# ============================================================================
+
+class InMemoryCache:
+    """
+    Simple in-memory cache with TTL support
+    Use Redis in production for multi-instance deployments
+    """
+
+    def __init__(self, max_size: int = 1000):
+        self._cache: Dict[str, Dict[str, Any]] = {}
+        self.max_size = max_size
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get value from cache if not expired"""
+        if key not in self._cache:
+            return None
+
+        entry = self._cache[key]
+
+        # Check if expired
+        if entry['expires_at'] and datetime.utcnow() > entry['expires_at']:
+            del self._cache[key]
+            return None
+
+        entry['last_accessed'] = datetime.utcnow()
+        entry['hits'] += 1
+        return entry['value']
+
+    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = 3600):
+        """Set value in cache with TTL"""
+        expires_at = None
+        if ttl_seconds:
+            expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+
+        # Evict old entries if cache is full
+        if len(self._cache) >= self.max_size:
+            self._evict_lru()
+
+        self._cache[key] = {
+            'value': value,
+            'expires_at': expires_at,
+            'created_at': datetime.utcnow(),
+            'last_accessed': datetime.utcnow(),
+            'hits': 0
+        }
+
+    def delete(self, key: str):
+        """Delete entry from cache"""
+        if key in self._cache:
+            del self._cache[key]
+
+    def invalidate_pattern(self, pattern: str):
+        """Invalidate all keys matching pattern (e.g., 'user:123:*')"""
+        import fnmatch
+        keys_to_delete = [
+            key for key in self._cache.keys()
+            if fnmatch.fnmatch(key, pattern)
+        ]
+        for key in keys_to_delete:
+            del self._cache[key]
+
+    def _evict_lru(self):
+        """Evict least recently used entry"""
+        if not self._cache:
+            return
+
+        # Find entry with oldest last_accessed
+        lru_key = min(
+            self._cache.keys(),
+            key=lambda k: self._cache[k]['last_accessed']
+        )
+        del self._cache[lru_key]
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        total_hits = sum(entry['hits'] for entry in self._cache.values())
+        return {
+            'size': len(self._cache),
+            'max_size': self.max_size,
+            'total_hits': total_hits,
+            'hit_rate': total_hits / max(1, len(self._cache))
+        }
+
+    def clear(self):
+        """Clear entire cache"""
+        self._cache.clear()
+
+
+# Global cache instance
+app_cache = InMemoryCache(max_size=5000)
+
+
+# ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
 
