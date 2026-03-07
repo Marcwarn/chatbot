@@ -1153,7 +1153,7 @@ class Database:
 
 # Initialize database with environment variable support
 import os
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./assessment_gdpr.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////tmp/assessment_gdpr.db")
 
 # Vercel Postgres URLs use 'postgres://' but SQLAlchemy needs 'postgresql://'
 if DATABASE_URL.startswith("postgres://"):
