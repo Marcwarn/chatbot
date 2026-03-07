@@ -3,8 +3,8 @@ GDPR-Extended API Endpoints
 Additional endpoints for GDPR compliance
 """
 
-from fastapi import APIRouter, Depends
-from api_admin import verify_admin_token, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from api_admin import verify_admin_token
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
@@ -193,8 +193,9 @@ async def export_user_data(
     request: DataExportRequest,
     session: dict = Depends(verify_admin_token)  # SECURITY: Require admin auth
 ):
-    """Export user data - ADMIN ONLY for security"""request: DataExportRequest):
     """
+    Export user data - ADMIN ONLY for security
+
     Export all user data in portable format
 
     GDPR Article 15: Right of access by the data subject
