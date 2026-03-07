@@ -325,6 +325,7 @@
     <div id="loginScreen" class="login-container">
         <h1>🔐 Admin-inloggning</h1>
         <div id="loginError" class="error-message"></div>
+        <input type="text" id="adminUsername" placeholder="Användarnamn" style="margin-bottom:10px;" />
         <input type="password" id="adminPassword" placeholder="Lösenord" />
         <button onclick="login()">Logga in</button>
         <p style="margin-top: 20px; text-align: center; color: #666; font-size: 12px;">
@@ -633,6 +634,7 @@
         }
 
         async function login() {
+            const username = document.getElementById('adminUsername').value;
             const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('loginError');
 
@@ -640,7 +642,7 @@
                 const response = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ username, password })
                 });
 
                 if (!response.ok) {
