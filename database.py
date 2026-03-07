@@ -495,6 +495,84 @@ class IncidentReport(Base):
 
 
 # ============================================================================
+# CONVERSATION HISTORY MODELS
+# ============================================================================
+
+class ConversationHistory(Base):
+    """
+    Track conversation history for personality coaching chat
+    Enables conversation memory and context-aware responses
+    """
+    __tablename__ = "conversation_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    conversation_id = Column(String, nullable=False, index=True)  # Group messages by conversation
+
+    # Message details
+    role = Column(String, nullable=False)  # 'user' or 'assistant'
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    # Context metadata
+    emotional_tone = Column(String, nullable=True)  # Detected emotional tone
+    question_type = Column(String, nullable=True)  # Type of question asked
+    traits_discussed = Column(JSON, nullable=True)  # List of traits mentioned
+
+    # Index for faster queries
+    __table_args__ = (
+        {'sqlite_autoincrement': True},
+    )
+
+    def to_dict(self):
+        """Export conversation message"""
+        return {
+            "role": self.role,
+            "content": self.content,
+            "timestamp": self.timestamp.isoformat(),
+            "emotional_tone": self.emotional_tone,
+            "question_type": self.question_type,
+            "traits_discussed": self.traits_discussed
+        }
+
+
+class ConversationMetadata(Base):
+    """
+    Store metadata about conversations for analytics and improvement
+    """
+    __tablename__ = "conversation_metadata"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    conversation_id = Column(String, unique=True, nullable=False, index=True)
+
+    # Conversation details
+    started_at = Column(DateTime, default=datetime.utcnow)
+    last_message_at = Column(DateTime, default=datetime.utcnow)
+    message_count = Column(Integer, default=0)
+
+    # Topics and stages
+    topics_discussed = Column(JSON, nullable=True)  # List of topics
+    current_stage = Column(String, default="opening")  # Conversation stage
+
+    # User satisfaction (optional)
+    user_rating = Column(Integer, nullable=True)  # 1-5 stars
+    user_feedback = Column(Text, nullable=True)
+
+    def to_dict(self):
+        """Export conversation metadata"""
+        return {
+            "conversation_id": self.conversation_id,
+            "started_at": self.started_at.isoformat(),
+            "last_message_at": self.last_message_at.isoformat(),
+            "message_count": self.message_count,
+            "topics_discussed": self.topics_discussed,
+            "current_stage": self.current_stage,
+            "user_rating": self.user_rating
+        }
+
+
+# ============================================================================
 # COST TRACKING MODELS
 # ============================================================================
 
@@ -725,6 +803,124 @@ class Database:
 
             session.commit()
             return len(old_assessments)
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    # ── Conversation History Methods ────────────────────────────────────────
+
+    def save_conversation_message(
+        self,
+        user_id: str,
+        conversation_id: str,
+        role: str,
+        content: str,
+        emotional_tone: Optional[str] = None,
+        question_type: Optional[str] = None,
+        traits_discussed: Optional[List[str]] = None
+    ):
+        """Save a conversation message to database"""
+        session = self.get_session()
+
+        try:
+            message = ConversationHistory(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                role=role,
+                content=content,
+                emotional_tone=emotional_tone,
+                question_type=question_type,
+                traits_discussed=traits_discussed
+            )
+
+            session.add(message)
+
+            # Update or create conversation metadata
+            metadata = session.query(ConversationMetadata).filter(
+                ConversationMetadata.conversation_id == conversation_id
+            ).first()
+
+            if not metadata:
+                metadata = ConversationMetadata(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    message_count=1
+                )
+                session.add(metadata)
+            else:
+                metadata.message_count += 1
+                metadata.last_message_at = datetime.utcnow()
+
+            session.commit()
+
+            return message.id
+
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def get_conversation_history(
+        self,
+        conversation_id: str,
+        limit: int = 50
+    ) -> List[Dict[str, str]]:
+        """Get conversation history for a conversation"""
+        session = self.get_session()
+
+        try:
+            messages = session.query(ConversationHistory).filter(
+                ConversationHistory.conversation_id == conversation_id
+            ).order_by(ConversationHistory.timestamp.asc()).limit(limit).all()
+
+            return [msg.to_dict() for msg in messages]
+
+        finally:
+            session.close()
+
+    def get_user_conversations(
+        self,
+        user_id: str,
+        limit: int = 10
+    ) -> List[Dict[str, any]]:
+        """Get list of user's conversations"""
+        session = self.get_session()
+
+        try:
+            conversations = session.query(ConversationMetadata).filter(
+                ConversationMetadata.user_id == user_id
+            ).order_by(ConversationMetadata.last_message_at.desc()).limit(limit).all()
+
+            return [conv.to_dict() for conv in conversations]
+
+        finally:
+            session.close()
+
+    def update_conversation_metadata(
+        self,
+        conversation_id: str,
+        topics_discussed: Optional[List[str]] = None,
+        current_stage: Optional[str] = None
+    ):
+        """Update conversation metadata"""
+        session = self.get_session()
+
+        try:
+            metadata = session.query(ConversationMetadata).filter(
+                ConversationMetadata.conversation_id == conversation_id
+            ).first()
+
+            if metadata:
+                if topics_discussed is not None:
+                    metadata.topics_discussed = topics_discussed
+                if current_stage is not None:
+                    metadata.current_stage = current_stage
+
+                session.commit()
 
         except Exception as e:
             session.rollback()

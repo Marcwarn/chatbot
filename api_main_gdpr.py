@@ -789,3 +789,89 @@ async def get_user_chat_profile(user_id: str):
             "saved_at": _user_profiles[user_id].get("saved_at")
         }
     return {"has_profile": False}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ENHANCED INTELLIGENT CHAT (with Response Blender)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from response_blender import create_chat_response
+
+
+class EnhancedChatRequest(BaseModel):
+    user_id: str
+    message: str
+    session_id: Optional[str] = Field(default=None, description="Optional session ID for conversation tracking")
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    language: str = Field(default="sv", description="Language code (sv or en)")
+
+
+class EnhancedChatResponse(BaseModel):
+    response: str
+    conversation_history: List[ChatMessage]
+    classification: Dict[str, Any] = Field(description="Question classification metadata")
+    strategy: Dict[str, str] = Field(description="Response strategy used")
+    context: Dict[str, Any] = Field(description="Conversation context info")
+
+
+@app.post("/api/v1/chat/ask", response_model=EnhancedChatResponse)
+async def intelligent_chat(req: EnhancedChatRequest):
+    """
+    Enhanced intelligent chat with contextual response system.
+
+    Handles:
+    - Personal report questions ("Why is my Conscientiousness low?")
+    - General psychology questions ("What is Big Five?")
+    - Blended responses (general knowledge + personal context)
+    - Conversation memory and context awareness
+    - Emotional tone detection and empathetic responses
+    """
+
+    # Get database session
+    session = db.get_session()
+
+    try:
+        # Convert ChatMessage objects to dicts for context manager
+        history_dicts = [
+            {"role": msg.role, "content": msg.content}
+            for msg in req.conversation_history
+        ]
+
+        # Generate intelligent response using Response Blender
+        result = create_chat_response(
+            user_id=req.user_id,
+            question=req.message,
+            db_session=session,
+            session_id=req.session_id,
+            conversation_history=history_dicts,
+            language=req.language
+        )
+
+        # Build updated conversation history
+        updated_history = history_dicts + [
+            {"role": "user", "content": req.message},
+            {"role": "assistant", "content": result["response"]}
+        ]
+
+        # Track chat message for admin analytics
+        track_chat_message()
+
+        return EnhancedChatResponse(
+            response=result["response"],
+            conversation_history=[ChatMessage(**msg) for msg in updated_history],
+            classification=result["classification"],
+            strategy=result["strategy"],
+            context=result["context"]
+        )
+
+    except Exception as e:
+        print(f"Enhanced chat error: {e}")
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat error: {str(e)}"
+        )
+    finally:
+        session.close()
