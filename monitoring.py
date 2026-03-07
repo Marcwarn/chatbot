@@ -3,9 +3,13 @@ Monitoring & Security Middleware
 Includes Sentry error tracking, rate limiting, and attack detection
 """
 
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
 from fastapi import Request, HTTPException
 from typing import Dict, List, Optional, Set
 import time
@@ -22,7 +26,7 @@ def init_sentry():
     """Initialize Sentry error tracking"""
     sentry_dsn = os.getenv("SENTRY_DSN")
 
-    if sentry_dsn:
+    if sentry_dsn and SENTRY_AVAILABLE:
         sentry_sdk.init(
             dsn=sentry_dsn,
             integrations=[
@@ -719,3 +723,4 @@ async def comprehensive_security_middleware(request: Request, call_next):
     track_api_call(endpoint, None, duration)
 
     return response
+
