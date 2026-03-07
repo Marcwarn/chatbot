@@ -21,6 +21,7 @@ from database import (
     AuditLog
 )
 from api_gdpr import router as gdpr_router
+from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 db.create_tables()
@@ -40,6 +41,7 @@ app.add_middleware(
 )
 
 app.include_router(gdpr_router)
+app.include_router(admin_router)
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
 anthropic_client = None
@@ -514,6 +516,13 @@ async def start_assessment(req: StartAssessmentRequest):
         },
     }
 
+    # Track user consents for admin
+    update_user_consents(user_id, {
+        "data_processing": req.consent_data_processing,
+        "analysis": req.consent_analysis,
+        "storage": req.consent_storage,
+    })
+
     return AssessmentStartResponse(
         assessment_id=assessment_id,
         user_id=user_id,
@@ -588,6 +597,14 @@ async def submit_assessment(req: SubmitAssessmentRequest):
 
     # Clean session
     _sessions.pop(req.assessment_id, None)
+
+    # Track assessment for admin analytics
+    track_assessment(
+        assessment_id=req.assessment_id,
+        user_id=session["user_id"],
+        scores=display_scores,
+        language=lang
+    )
 
     return AssessmentResultOut(
         assessment_id=req.assessment_id,
@@ -692,6 +709,9 @@ async def personality_coach_chat(req: ChatRequest):
         {"role": "user", "content": req.message},
         {"role": "assistant", "content": response_text}
     ]
+
+    # Track chat message for admin analytics
+    track_chat_message()
 
     return ChatResponse(
         response=response_text,
