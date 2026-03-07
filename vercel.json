@@ -3,14 +3,13 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb"
+      }
     },
     {
-      "src": "big-five-demo.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "admin.html",
+      "src": "*.html",
       "use": "@vercel/static"
     }
   ],
@@ -25,11 +24,23 @@
     },
     {
       "src": "/",
-      "dest": "/big-five-demo.html"
+      "dest": "/landing.html"
     },
     {
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ]
+  ],
+  "cacheDirectories": [
+    ".vercel/cache",
+    "__pycache__",
+    ".pytest_cache",
+    ".pip-cache"
+  ],
+  "functions": {
+    "api/index.py": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }
