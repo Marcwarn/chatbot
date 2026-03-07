@@ -1,5 +1,6 @@
 # 🧠 AI-Driven Personality Assessment Platform
 
+<!-- Deploy trigger -->
 En komplett plattform för personlighetsbedömningar med AI-genererade frågor och analys.
 
 ## 📦 Vad Finns I Detta Repo?
