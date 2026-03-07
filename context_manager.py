@@ -438,7 +438,7 @@ class ContextManager:
             classification: QuestionClassification object
             message_content: The actual message text
         """
-        from question_classifier import UrgencyLevel, MoodState as QMoodState
+        from question_classifier import UrgencyLevel
 
         # Create conversation message
         msg = ConversationMessage(
@@ -489,17 +489,18 @@ def get_trait_description(dimension: str, score: float, language: str = "sv") ->
     """
     if language == "sv":
         level = "hög" if score >= 65 else "låg" if score <= 35 else "medel"
+        sublevel = "utåtriktad" if score >= 65 else "introvert" if score <= 35 else "balanserad"
 
         descriptions = {
-            "E": f"{level} Extraversion ({"utåtriktad" if score >= 65 else "introvert" if score <= 35 else "balanserad"})",
-            "A": f"{level} Vänlighet ({"empatisk" if score >= 65 else "direkt" if score <= 35 else "balanserad"})",
-            "C": f"{level} Samvetsgrannhet ({"organiserad" if score >= 65 else "spontan" if score <= 35 else "balanserad"})",
-            "N": f"{level} Neuroticism ({"känslosam" if score >= 65 else "stabil" if score <= 35 else "balanserad"})",
-            "O": f"{level} Öppenhet ({"kreativ" if score >= 65 else "praktisk" if score <= 35 else "balanserad"})",
-            "D": f"{level} Dominance ({"resultatorienterad" if score >= 65 else "samarbetande" if score <= 35 else "balanserad"})",
-            "I": f"{level} Influence ({"utåtriktad" if score >= 65 else "reserverad" if score <= 35 else "balanserad"})",
-            "S": f"{level} Steadiness ({"stabil" if score >= 65 else "dynamisk" if score <= 35 else "balanserad"})",
-            "C": f"{level} Conscientiousness ({"analytisk" if score >= 65 else "intuitiv" if score <= 35 else "balanserad"})",
+            "E": f"{level} Extraversion ({sublevel})",
+            "A": f"{level} Vänlighet ({'empatisk' if score >= 65 else 'direkt' if score <= 35 else 'balanserad'})",
+            "C": f"{level} Samvetsgrannhet ({'organiserad' if score >= 65 else 'spontan' if score <= 35 else 'balanserad'})",
+            "N": f"{level} Neuroticism ({'känslosam' if score >= 65 else 'stabil' if score <= 35 else 'balanserad'})",
+            "O": f"{level} Öppenhet ({'kreativ' if score >= 65 else 'praktisk' if score <= 35 else 'balanserad'})",
+            "D": f"{level} Dominance ({'resultatorienterad' if score >= 65 else 'samarbetande' if score <= 35 else 'balanserad'})",
+            "I": f"{level} Influence ({'utåtriktad' if score >= 65 else 'reserverad' if score <= 35 else 'balanserad'})",
+            "S": f"{level} Steadiness ({'stabil' if score >= 65 else 'dynamisk' if score <= 35 else 'balanserad'})",
+            "C": f"{level} Conscientiousness ({'analytisk' if score >= 65 else 'intuitiv' if score <= 35 else 'balanserad'})",
         }
     else:
         level = "high" if score >= 65 else "low" if score <= 35 else "medium"

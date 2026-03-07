@@ -101,10 +101,11 @@ class ResponseBlender:
         )
 
         # 4. ADD ASSISTANT MESSAGE TO HISTORY
+        from datetime import datetime
         assistant_msg = ConversationMessage(
             role="assistant",
             content=response_text,
-            timestamp=ConversationMessage.__dataclass_fields__['timestamp'].default_factory(),
+            timestamp=datetime.utcnow().isoformat(),
             topics=[t.value for t in classification.topics]
         )
         context.add_message(assistant_msg)
