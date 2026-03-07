@@ -24,6 +24,7 @@ from api_gdpr import router as gdpr_router
 from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
 from api_disc import router as disc_router
 from api_admin_costs import router as admin_costs_router
+from api_deployment import router as deployment_router
 from monitoring import init_sentry, rate_limit_middleware
 from cost_tracker import cost_tracker
 
@@ -64,7 +65,7 @@ app.include_router(gdpr_router)
 app.include_router(admin_router)
 app.include_router(admin_costs_router)
 app.include_router(disc_router)
-app.include_router(disc_router)
+app.include_router(deployment_router)
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
 anthropic_client = None

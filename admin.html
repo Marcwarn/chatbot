@@ -389,6 +389,39 @@
                 </div>
             </div>
 
+            <!-- Deployment Status -->
+            <div class="data-table" style="margin-bottom: 20px;">
+                <h2 style="padding: 20px;">🚀 Deployment Status</h2>
+                <div style="padding: 20px;">
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <span class="label">Miljö</span>
+                            <span class="value" id="deployEnvironment">Laddar...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Deployment URL</span>
+                            <span class="value" id="deployUrl">Laddar...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Status</span>
+                            <span class="value" id="deployState">Laddar...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Senaste commit</span>
+                            <span class="value" id="deployCommit">Laddar...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Branch</span>
+                            <span class="value" id="deployBranch">Laddar...</span>
+                        </div>
+                        <div class="config-item">
+                            <span class="label">Vercel API</span>
+                            <span class="value" id="deployVercelConnected">Laddar...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="data-table" style="margin-bottom: 20px;">
                 <h2 style="padding: 20px;">Genomsnittliga Big Five-scores</h2>
                 <div style="padding: 20px;">
@@ -611,6 +644,14 @@
                     <span class="label">Tjänstestatus</span>
                     <span class="value" id="serviceStatus">-</span>
                 </div>
+                <div class="config-item">
+                    <span class="label">Vercel Token</span>
+                    <span class="value" id="configVercelToken">-</span>
+                </div>
+                <div class="config-item">
+                    <span class="label">Deployment ID</span>
+                    <span class="value" id="configDeploymentId">-</span>
+                </div>
             </div>
         </div>
     </div>
@@ -772,6 +813,9 @@
 
                 // Load DISC stats
                 await loadDiscStats();
+
+                // Load deployment info
+                await loadDeploymentInfo();
             } catch (error) {
                 console.error('Failed to load dashboard:', error);
             }
@@ -811,6 +855,68 @@
                 }
             } catch (error) {
                 console.error('Failed to load DISC stats:', error);
+            }
+        }
+
+        async function loadDeploymentInfo() {
+            try {
+                // Fetch deployment info (no auth required for this endpoint)
+                const response = await fetch('/api/v1/deployment/info');
+                const data = await response.json();
+
+                // Update deployment fields
+                const envNames = {
+                    'production': '🟢 Production',
+                    'preview': '🟡 Preview',
+                    'development': '🔵 Development',
+                    'local': '💻 Lokal',
+                    'vercel': '🚀 Vercel'
+                };
+
+                const stateIcons = {
+                    'READY': '✅',
+                    'ERROR': '❌',
+                    'BUILDING': '🔄',
+                    'QUEUED': '⏳'
+                };
+
+                document.getElementById('deployEnvironment').textContent =
+                    envNames[data.environment] || data.environment;
+
+                if (data.deployment_url) {
+                    const urlEl = document.getElementById('deployUrl');
+                    urlEl.innerHTML = `<a href="${escapeHtml(data.deployment_url)}" target="_blank" style="color: #667eea; text-decoration: none;">${escapeHtml(data.deployment_url)}</a>`;
+                } else {
+                    document.getElementById('deployUrl').textContent = 'Ej tillgänglig';
+                }
+
+                const stateIcon = stateIcons[data.state] || '❓';
+                document.getElementById('deployState').textContent =
+                    data.state ? `${stateIcon} ${data.state}` : 'Okänd';
+
+                if (data.commit_sha && data.commit_message) {
+                    document.getElementById('deployCommit').textContent =
+                        `${data.commit_sha}: ${data.commit_message.substring(0, 50)}${data.commit_message.length > 50 ? '...' : ''}`;
+                } else if (data.commit_sha) {
+                    document.getElementById('deployCommit').textContent = data.commit_sha;
+                } else {
+                    document.getElementById('deployCommit').textContent = 'Ingen info';
+                }
+
+                document.getElementById('deployBranch').textContent =
+                    data.branch || 'Okänd';
+
+                document.getElementById('deployVercelConnected').textContent =
+                    data.vercel_connected ? '✅ Ansluten' : '❌ Ej ansluten';
+
+            } catch (error) {
+                console.error('Failed to load deployment info:', error);
+                document.getElementById('deployEnvironment').textContent = 'Fel';
+                document.getElementById('deployUrl').textContent = 'Kunde inte hämta';
+                document.getElementById('deployState').textContent = 'Fel';
+                document.getElementById('deployCommit').textContent = 'Fel';
+                document.getElementById('deployBranch').textContent = 'Fel';
+                document.getElementById('deployVercelConnected').textContent = '❌ Fel';
             }
         }
 
@@ -951,6 +1057,23 @@
                 document.getElementById('configChatTokens').textContent = config.max_tokens_chat;
                 document.getElementById('configReportTokens').textContent = config.max_tokens_report;
                 document.getElementById('serviceStatus').innerHTML = '<span class="status-badge status-healthy">Operativ</span>';
+
+                // Load deployment config info
+                try {
+                    const deployResponse = await fetch('/api/v1/deployment/info');
+                    const deployData = await deployResponse.json();
+
+                    document.getElementById('configVercelToken').innerHTML = deployData.vercel_connected ?
+                        '<span class="status-badge status-healthy">Konfigurerad</span>' :
+                        '<span class="status-badge status-error">Saknas</span>';
+
+                    document.getElementById('configDeploymentId').textContent =
+                        deployData.deployment_id ? deployData.deployment_id.substring(0, 12) + '...' : 'Ej tillgänglig';
+                } catch (deployError) {
+                    console.error('Failed to load deployment config:', deployError);
+                    document.getElementById('configVercelToken').innerHTML = '<span class="status-badge status-error">Fel</span>';
+                    document.getElementById('configDeploymentId').textContent = 'Fel';
+                }
             } catch (error) {
                 console.error('Failed to load config:', error);
             }
