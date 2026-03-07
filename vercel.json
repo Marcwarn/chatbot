@@ -1,40 +1,56 @@
 {
-    "version": 2,
-    "builds": [
-          {
-                  "src": "api/index.py",
-                  "use": "@vercel/python",
-                  "config": {
-                            "maxLambdaSize": "15mb"
-                  }
-          },
-          {
-                  "src": "*.html",
-                  "use": "@vercel/static"
-          }
-    ],
-    "routes": [
-          {
-                  "src": "/api/(.*)",
-                  "dest": "/api/index.py"
-          },
-          {
-                  "src": "/admin",
-                  "dest": "/admin.html"
-          },
-          {
-                  "src": "/",
-                  "dest": "/landing.html"
-          },
-          {
-                  "src": "/(.*)",
-                  "dest": "/$1"
-          }
-    ],
-    "functions": {
-          "api/index.py": {
-                  "memory": 1024,
-                  "maxDuration": 10
-          }
-    }
+      "version": 2,
+      "builds": [
+              {
+                        "src": "api/index.py",
+                        "use": "@vercel/python",
+                        "config": {
+                                    "maxLambdaSize": "15mb"
+                        }
+              },
+              {
+                        "src": "**/*.html",
+                        "use": "@vercel/static"
+              },
+              {
+                        "src": "**/*.css",
+                        "use": "@vercel/static"
+              },
+              {
+                        "src": "**/*.js",
+                        "use": "@vercel/static"
+              }
+      ],
+      "routes": [
+              {
+                        "src": "/api/(.*)",
+                        "dest": "/api/index.py"
+              },
+              {
+                        "src": "/admin",
+                        "dest": "/admin.html"
+              },
+              {
+                        "src": "/disc-assessment",
+                        "dest": "/disc-assessment.html"
+              },
+              {
+                        "src": "/landing",
+                        "dest": "/landing.html"
+              },
+              {
+                        "src": "/",
+                        "dest": "/landing.html"
+              },
+              {
+                        "src": "/(.*)",
+                        "dest": "/$1"
+              }
+      ],
+      "functions": {
+              "api/index.py": {
+                        "memory": 1024,
+                        "maxDuration": 10
+              }
+      }
 }
