@@ -328,8 +328,8 @@
         <input type="password" id="adminPassword" placeholder="Lösenord" />
         <button onclick="login()">Logga in</button>
         <p style="margin-top: 20px; text-align: center; color: #666; font-size: 12px;">
-            Standard lösenord: admin123<br>
-            (Ändra ADMIN_PASSWORD_HASH i env-variabler)
+            ⚠️ Säkerhet: Använd starkt lösenord<br>
+            Konfigurera ADMIN_PASSWORD_HASH i environment variables
         </p>
     </div>
 
@@ -492,6 +492,13 @@
     <script>
         let authToken = null;
 
+        // HTML escaping function to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Check if already logged in
         const storedToken = localStorage.getItem('adminToken');
         if (storedToken) {
@@ -561,6 +568,29 @@
             location.reload();
         }
 
+        // Auto-logout on inactivity (15 minutes)
+        let lastActivity = Date.now();
+        const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
+        function resetActivityTimer() {
+            lastActivity = Date.now();
+        }
+
+        function checkSessionTimeout() {
+            if (authToken && (Date.now() - lastActivity > SESSION_TIMEOUT)) {
+                alert('Din session har löpt ut på grund av inaktivitet. Logga in igen.');
+                logout();
+            }
+        }
+
+        // Track user activity
+        document.addEventListener('click', resetActivityTimer);
+        document.addEventListener('keypress', resetActivityTimer);
+        document.addEventListener('scroll', resetActivityTimer);
+
+        // Check timeout every minute
+        setInterval(checkSessionTimeout, 60000);
+
         function switchTab(tabName) {
             // Update button states
             document.querySelectorAll('.tab-button').forEach(btn => {
@@ -622,16 +652,24 @@
 
                 tbody.innerHTML = users.map(user => `
                     <tr>
-                        <td>${user.user_id.substring(0, 20)}...</td>
-                        <td>${user.assessments_count}</td>
-                        <td>${user.last_activity ? new Date(user.last_activity).toLocaleString('sv-SE') : 'Aldrig'}</td>
+                        <td>${escapeHtml(user.user_id.substring(0, 20))}...</td>
+                        <td>${escapeHtml(String(user.assessments_count))}</td>
+                        <td>${user.last_activity ? escapeHtml(new Date(user.last_activity).toLocaleString('sv-SE')) : 'Aldrig'}</td>
                         <td>${user.has_chat_profile ? '✅' : '❌'}</td>
                         <td>
-                            <button class="action-button btn-export" onclick="exportUser('${user.user_id}')">Exportera</button>
-                            <button class="action-button btn-delete" onclick="deleteUser('${user.user_id}')">Radera</button>
+                            <button class="action-button btn-export" data-user-id="${escapeHtml(user.user_id)}">Exportera</button>
+                            <button class="action-button btn-delete" data-user-id="${escapeHtml(user.user_id)}">Radera</button>
                         </td>
                     </tr>
                 `).join('');
+
+                // Use event delegation instead of inline onclick
+                tbody.querySelectorAll('.btn-export').forEach(btn => {
+                    btn.addEventListener('click', () => exportUser(btn.dataset.userId));
+                });
+                tbody.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', () => deleteUser(btn.dataset.userId));
+                });
             } catch (error) {
                 console.error('Failed to load users:', error);
             }
@@ -653,15 +691,20 @@
 
                 tbody.innerHTML = assessments.map(a => `
                     <tr>
-                        <td>${a.assessment_id.substring(0, 20)}...</td>
-                        <td>${a.user_id.substring(0, 20)}...</td>
-                        <td>${new Date(a.completed_at).toLocaleString('sv-SE')}</td>
-                        <td>${a.language.toUpperCase()}</td>
+                        <td>${escapeHtml(a.assessment_id.substring(0, 20))}...</td>
+                        <td>${escapeHtml(a.user_id.substring(0, 20))}...</td>
+                        <td>${escapeHtml(new Date(a.completed_at).toLocaleString('sv-SE'))}</td>
+                        <td>${escapeHtml(a.language.toUpperCase())}</td>
                         <td>
-                            <button class="action-button btn-view" onclick="viewAssessment('${a.assessment_id}')">Visa</button>
+                            <button class="action-button btn-view" data-assessment-id="${escapeHtml(a.assessment_id)}">Visa</button>
                         </td>
                     </tr>
                 `).join('');
+
+                // Event delegation for view buttons
+                tbody.querySelectorAll('.btn-view').forEach(btn => {
+                    btn.addEventListener('click', () => viewAssessment(btn.dataset.assessmentId));
+                });
             } catch (error) {
                 console.error('Failed to load assessments:', error);
             }
