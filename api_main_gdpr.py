@@ -23,7 +23,9 @@ from database import (
 from api_gdpr import router as gdpr_router
 from api_admin import router as admin_router, track_assessment, track_chat_message, update_user_consents
 from api_disc import router as disc_router
+from api_admin_costs import router as admin_costs_router
 from monitoring import init_sentry, rate_limit_middleware
+from cost_tracker import cost_tracker
 
 # ── Bootstrap ────────────────────────────────────────────────────────────────
 db.create_tables()
@@ -60,6 +62,8 @@ app.middleware("http")(rate_limit_middleware)
 
 app.include_router(gdpr_router)
 app.include_router(admin_router)
+app.include_router(admin_costs_router)
+app.include_router(disc_router)
 app.include_router(disc_router)
 
 # ── Anthropic AI Client ──────────────────────────────────────────────────────
@@ -454,6 +458,15 @@ Generera rapporten nu:"""
             max_tokens=4000,  # Increased for deeper, more detailed reports
             temperature=0.7,
             messages=[{"role": "user", "content": prompt}]
+        )
+
+        # Track API cost
+        cost_tracker.track_anthropic_call(
+            model="claude-sonnet-4-5-20250929",
+            input_tokens=message.usage.input_tokens,
+            output_tokens=message.usage.output_tokens,
+            purpose="report_generation",
+            cache_hit=False  # Add cache detection later
         )
 
         response_text = message.content[0].text
