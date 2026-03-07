@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import os
 import hashlib
 import secrets
+import bcrypt
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -18,15 +19,24 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # Simple token-based auth (upgrade to JWT in production)
 _admin_sessions: Dict[str, dict] = {}  # token -> {created_at, expires_at}
 
-ADMIN_PASSWORD_HASH = os.getenv(
-    "ADMIN_PASSWORD_HASH",
-    # Default: "admin123" (CHANGE THIS IN PRODUCTION!)
-    "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
-)
+# Require ADMIN_PASSWORD_HASH to be set (no default!)
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
+if not ADMIN_PASSWORD_HASH:
+    raise ValueError(
+        "SECURITY ERROR: ADMIN_PASSWORD_HASH must be set in environment variables!\n"
+        "Generate hash: python -c 'import bcrypt; print(bcrypt.hashpw(b"your_password", bcrypt.gensalt()).decode())'"
+    )
 
 def hash_password(password: str) -> str:
-    """Hash password with SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password with bcrypt (secure)"""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password using constant-time comparison"""
+    try:
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+    except Exception:
+        return False
 
 def verify_admin_token(authorization: Optional[str] = Header(None)) -> dict:
     """Verify admin authentication token"""
@@ -105,9 +115,8 @@ _analytics: Dict[str, Any] = {
 async def admin_login(req: AdminLoginRequest):
     """Admin login - returns auth token"""
 
-    password_hash = hash_password(req.password)
-
-    if password_hash != ADMIN_PASSWORD_HASH:
+    # Use constant-time password verification
+    if not verify_password(req.password, ADMIN_PASSWORD_HASH):
         raise HTTPException(status_code=401, detail="Invalid password")
 
     # Generate session token

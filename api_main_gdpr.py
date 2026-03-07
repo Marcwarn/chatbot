@@ -37,12 +37,21 @@ app = FastAPI(
 )
 
 # Add middlewares
+# CORS Configuration - Explicit whitelist (SECURITY)
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
+if not ALLOWED_ORIGINS or ALLOWED_ORIGINS == [""]:
+    # Default for local development only
+    ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:8000"]
+    print("⚠️  WARNING: Using default ALLOWED_ORIGINS for development")
+    print("⚠️  Set ALLOWED_ORIGINS in production: https://yourdomain.com")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # Explicit whitelist
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    max_age=3600,  # Cache preflight for 1 hour
 )
 
 # Rate limiting middleware

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard - Real-time Monitoring</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1a202c;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-badge.online {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status-badge.alert {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.green {
+            background: #48bb78;
+        }
+
+        .status-dot.red {
+            background: #f56565;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            color: #2d3748;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .stat-change.up {
+            color: #f56565;
+        }
+
+        .stat-change.down {
+            color: #48bb78;
+        }
+
+        .event-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            padding: 12px;
+            border-left: 4px solid #e2e8f0;
+            margin-bottom: 12px;
+            background: #f7fafc;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .event-item:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+
+        .event-item.critical {
+            border-left-color: #f56565;
+            background: #fff5f5;
+        }
+
+        .event-item.high {
+            border-left-color: #ed8936;
+            background: #fffaf0;
+        }
+
+        .event-item.medium {
+            border-left-color: #ecc94b;
+            background: #fffff0;
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .event-type {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .event-time {
+            font-size: 12px;
+            color: #a0aec0;
+        }
+
+        .event-details {
+            font-size: 13px;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+
+        .event-ip {
+            font-family: 'Monaco', monospace;
+            font-size: 12px;
+            color: #718096;
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .blocked-ips-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .blocked-ip-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #fff5f5;
+            border-left: 3px solid #f56565;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .ip-address {
+            font-family: 'Monaco', monospace;
+            font-weight: 600;
+            color: #742a2a;
+        }
+
+        .unblock-time {
+            font-size: 12px;
+            color: #a0aec0;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #cbd5e0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .toggle.active {
+            background: #48bb78;
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: left 0.2s;
+        }
+
+        .toggle.active::after {
+            left: 26px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.critical {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .severity-badge.high {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .severity-badge.medium {
+            background: #fefcbf;
+            color: #744210;
+        }
+
+        .severity-badge.low {
+            background: #e6fffa;
+            color: #234e52;
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛡️ Security Dashboard</h1>
+            <p class="subtitle">Real-time security monitoring and threat detection</p>
+
+            <div class="status-bar">
+                <div class="status-badge online">
+                    <span class="status-dot green"></span>
+                    System Online
+                </div>
+                <div class="status-badge" id="activeThreats">
+                    <span class="status-dot red"></span>
+                    <span id="threatCount">0</span> Active Threats
+                </div>
+                <div class="status-badge">
+                    <span id="blockedCount">0</span> IPs Blocked
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="refresh-btn" onclick="refreshDashboard()">
+                🔄 Refresh Data
+            </button>
+            <div class="auto-refresh">
+                <span>Auto-refresh</span>
+                <div class="toggle active" id="autoRefreshToggle" onclick="toggleAutoRefresh()"></div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid">
+            <div class="card">
+                <h2>⚠️ Failed Logins</h2>
+                <div class="stat-value" id="failedLogins">0</div>
+                <div class="stat-label">Last 24 hours</div>
+                <div class="stat-change up" id="loginChange">↑ 0% from yesterday</div>
+            </div>
+
+            <div class="card">
+                <h2>🚫 Rate Limit Violations</h2>
+                <div class="stat-value" id="rateLimitViolations">0</div>
+                <div class="stat-label">Last 24 hours</div>
+                <div class="stat-change up" id="rateChange">↑ 0% from yesterday</div>
+            </div>
+
+            <div class="card">
+                <h2>🔍 SQL Injection Attempts</h2>
+                <div class="stat-value" id="sqlInjections">0</div>
+                <div class="stat-label">Last 24 hours</div>
+                <div class="stat-change down" id="sqlChange">↓ 0% from yesterday</div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ XSS Attempts</h2>
+                <div class="stat-value" id="xssAttempts">0</div>
+                <div class="stat-label">Last 24 hours</div>
+                <div class="stat-change down" id="xssChange">↓ 0% from yesterday</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid">
+            <div class="card">
+                <h2>📊 Failed Login Attempts</h2>
+                <div class="chart-container">
+                    <canvas id="loginChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Rate Limit Violations</h2>
+                <div class="chart-container">
+                    <canvas id="rateChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Events Feed & Blocked IPs -->
+        <div class="grid">
+            <div class="card" style="grid-column: span 2;">
+                <h2>🔴 Recent Security Events</h2>
+                <div class="event-feed" id="eventFeed">
+                    <div class="empty-state">
+                        <div class="loading"></div>
+                        <p>Loading security events...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🔒 Blocked IPs</h2>
+                <div class="blocked-ips-list" id="blockedIpsList">
+                    <div class="empty-state">
+                        <div class="loading"></div>
+                        <p>Loading blocked IPs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh state
+        let autoRefresh = true;
+        let refreshInterval;
+
+        // Chart instances
+        let loginChart, rateChart;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            refreshDashboard();
+            startAutoRefresh();
+        });
+
+        // Initialize charts
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            };
+
+            // Login attempts chart
+            loginChart = new Chart(document.getElementById('loginChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Failed Logins',
+                        data: [],
+                        borderColor: '#f56565',
+                        backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Rate limit chart
+            rateChart = new Chart(document.getElementById('rateChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Rate Limit Violations',
+                        data: [],
+                        backgroundColor: '#ed8936'
+                    }]
+                },
+                options: commonOptions
+            });
+        }
+
+        // Refresh dashboard data
+        async function refreshDashboard() {
+            try {
+                // Fetch security metrics
+                const response = await fetch('/api/admin/security/metrics');
+                const data = await response.json();
+
+                // Update stats
+                updateStats(data);
+
+                // Update charts
+                updateCharts(data);
+
+                // Update events feed
+                updateEventsFeed(data.recent_events || []);
+
+                // Update blocked IPs
+                updateBlockedIPs(data.blocked_ips || []);
+
+            } catch (error) {
+                console.error('Failed to refresh dashboard:', error);
+            }
+        }
+
+        // Update statistics
+        function updateStats(data) {
+            document.getElementById('failedLogins').textContent = data.failed_logins || 0;
+            document.getElementById('rateLimitViolations').textContent = data.rate_violations || 0;
+            document.getElementById('sqlInjections').textContent = data.sql_injections || 0;
+            document.getElementById('xssAttempts').textContent = data.xss_attempts || 0;
+
+            document.getElementById('threatCount').textContent = data.active_threats || 0;
+            document.getElementById('blockedCount').textContent = data.blocked_ips_count || 0;
+
+            // Update threat badge
+            const threatBadge = document.getElementById('activeThreats');
+            if (data.active_threats > 0) {
+                threatBadge.classList.add('alert');
+            } else {
+                threatBadge.classList.remove('alert');
+            }
+        }
+
+        // Update charts
+        function updateCharts(data) {
+            if (data.login_timeline) {
+                loginChart.data.labels = data.login_timeline.labels;
+                loginChart.data.datasets[0].data = data.login_timeline.values;
+                loginChart.update();
+            }
+
+            if (data.rate_timeline) {
+                rateChart.data.labels = data.rate_timeline.labels;
+                rateChart.data.datasets[0].data = data.rate_timeline.values;
+                rateChart.update();
+            }
+        }
+
+        // Update events feed
+        function updateEventsFeed(events) {
+            const feed = document.getElementById('eventFeed');
+
+            if (events.length === 0) {
+                feed.innerHTML = `
+                    <div class="empty-state">
+                        <p>✅ No security events detected</p>
+                    </div>
+                `;
+                return;
+            }
+
+            feed.innerHTML = events.map(event => {
+                const severity = getSeverity(event.event_type);
+                const time = formatTime(event.timestamp);
+
+                return `
+                    <div class="event-item ${severity}">
+                        <div class="event-header">
+                            <span class="event-type">
+                                ${getEventIcon(event.event_type)} ${formatEventType(event.event_type)}
+                                <span class="severity-badge ${severity}">${severity}</span>
+                            </span>
+                            <span class="event-time">${time}</span>
+                        </div>
+                        <div class="event-details">
+                            ${event.endpoint || 'Unknown endpoint'}
+                        </div>
+                        <span class="event-ip">${event.client_ip}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update blocked IPs
+        function updateBlockedIPs(ips) {
+            const list = document.getElementById('blockedIpsList');
+
+            if (ips.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <p>✅ No IPs currently blocked</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = ips.map(ip => `
+                <div class="blocked-ip-item">
+                    <span class="ip-address">${ip.ip}</span>
+                    <span class="unblock-time">Unblocks in ${formatDuration(ip.remaining_seconds)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Helper functions
+        function getSeverity(eventType) {
+            const severityMap = {
+                'sql_injection': 'critical',
+                'data_exfiltration': 'critical',
+                'xss_attempt': 'high',
+                'brute_force': 'high',
+                'honeypot_triggered': 'high',
+                'dos_attempt': 'medium',
+                'scanner_detected': 'medium',
+                'suspicious_pattern': 'low'
+            };
+            return severityMap[eventType] || 'medium';
+        }
+
+        function getEventIcon(eventType) {
+            const iconMap = {
+                'sql_injection': '💉',
+                'xss_attempt': '⚡',
+                'brute_force': '🔨',
+                'dos_attempt': '💥',
+                'scanner_detected': '🔍',
+                'honeypot_triggered': '🍯',
+                'data_exfiltration': '📤',
+                'suspicious_pattern': '👁️'
+            };
+            return iconMap[eventType] || '⚠️';
+        }
+
+        function formatEventType(type) {
+            return type.split('_').map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+            return `${Math.floor(seconds / 3600)}h`;
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const toggle = document.getElementById('autoRefreshToggle');
+            toggle.classList.toggle('active');
+
+            if (autoRefresh) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(refreshDashboard, 5000); // Refresh every 5 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
