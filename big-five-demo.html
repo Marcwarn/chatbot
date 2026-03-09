@@ -50,68 +50,83 @@ const DIM = {
 
 // ─────────────────────────────────────────────
 // IPIP-50 QUESTIONS (Swedish, validated)
+// Interleaved order: E-A-C-N-O (10 rounds × 5)
+// Source: Goldberg (1999) IPIP-50, public domain
+// Swedish: based on Bäckström/IPIP Swedish item pool
+// 3 embedded attention checks (dim:"CHECK")
 // ─────────────────────────────────────────────
 const QUESTIONS = [
-    // EXTRAVERSION
-    { id:1,  text:"Jag är den som pratar mest på en fest",              dim:"E", k:"+" },
-    { id:2,  text:"Jag pratar inte särskilt mycket",                    dim:"E", k:"-" },
-    { id:3,  text:"Jag känner mig bekväm i grupp",                      dim:"E", k:"+" },
-    { id:4,  text:"Jag håller mig hellre i bakgrunden",                 dim:"E", k:"-" },
-    { id:5,  text:"Jag tar gärna initiativ till samtal",                dim:"E", k:"+" },
-    { id:6,  text:"Jag har lite att säga i sociala sammanhang",         dim:"E", k:"-" },
-    { id:7,  text:"Jag pratar gärna med många på fester",               dim:"E", k:"+" },
-    { id:8,  text:"Jag vill inte vara i centrum av uppmärksamheten",    dim:"E", k:"-" },
-    { id:9,  text:"Jag tar gärna ledningen i grupp",                    dim:"E", k:"+" },
-    { id:10, text:"Jag är tyst och tillbakadragen med okända",          dim:"E", k:"-" },
-
-    // AGREEABLENESS
-    { id:11, text:"Jag bryr mig genuint om andras välmående",           dim:"A", k:"+" },
-    { id:12, text:"Jag kan vara hård och direkt mot folk",              dim:"A", k:"-" },
-    { id:13, text:"Jag förstår andras känslor",                         dim:"A", k:"+" },
-    { id:14, text:"Jag är sällan intresserad av andras problem",        dim:"A", k:"-" },
-    { id:15, text:"Jag har ett varmt och omtänksamt hjärta",            dim:"A", k:"+" },
-    { id:16, text:"Jag är inte alltid intresserad av hur andra mår",    dim:"A", k:"-" },
-    { id:17, text:"Jag tar tid att hjälpa andra",                       dim:"A", k:"+" },
-    { id:18, text:"Jag är lyhörd för andras känslor",                   dim:"A", k:"+" },
-    { id:19, text:"Jag skapar en bekväm stämning runt mig",             dim:"A", k:"+" },
-    { id:20, text:"Jag är svår att lära känna på djupet",               dim:"A", k:"-" },
-
-    // CONSCIENTIOUSNESS
-    { id:21, text:"Jag är alltid väl förberedd",                        dim:"C", k:"+" },
-    { id:22, text:"Jag lämnar saker och ting i oordning",               dim:"C", k:"-" },
-    { id:23, text:"Jag uppmärksammar detaljer noga",                    dim:"C", k:"+" },
-    { id:24, text:"Jag skapar lätt röra hemma och på jobbet",           dim:"C", k:"-" },
-    { id:25, text:"Jag slutför uppgifter snabbt och direkt",            dim:"C", k:"+" },
-    { id:26, text:"Jag skjuter upp saker på framtiden",                 dim:"C", k:"-" },
-    { id:27, text:"Jag arbetar systematiskt och följer en plan",        dim:"C", k:"+" },
-    { id:28, text:"Jag missar ibland viktiga deadlines",                dim:"C", k:"-" },
-    { id:29, text:"Jag avslutar alltid det jag börjar",                 dim:"C", k:"+" },
-    { id:30, text:"Jag gör inte mer än vad som absolut krävs",         dim:"C", k:"-" },
-
-    // NEUROTICISM
-    { id:31, text:"Jag blir lätt upprörd eller stressad",               dim:"N", k:"+" },
-    { id:32, text:"Jag är avslappnad de flesta dagar",                  dim:"N", k:"-" },
-    { id:33, text:"Jag oroar mig ofta för saker",                       dim:"N", k:"+" },
-    { id:34, text:"Jag blir sällan stressad",                           dim:"N", k:"-" },
-    { id:35, text:"Jag kan bli irriterad snabbt",                       dim:"N", k:"+" },
-    { id:36, text:"Jag hanterar stress bra",                            dim:"N", k:"-" },
-    { id:37, text:"Jag har humörsvängningar",                           dim:"N", k:"+" },
-    { id:38, text:"Jag störs sällan av oro eller ångest",               dim:"N", k:"-" },
-    { id:39, text:"Jag kan bli melankolisk eller nedstämd",             dim:"N", k:"+" },
-    { id:40, text:"Jag är känslomässigt stabil och jämn",               dim:"N", k:"-" },
-
-    // OPENNESS
-    { id:41, text:"Jag har en livlig och aktiv fantasi",                dim:"O", k:"+" },
-    { id:42, text:"Jag har ibland svårt att förstå abstrakta idéer",    dim:"O", k:"-" },
-    { id:43, text:"Jag har intressanta och originella idéer",           dim:"O", k:"+" },
-    { id:44, text:"Jag saknar stark kreativ fantasi",                   dim:"O", k:"-" },
-    { id:45, text:"Jag lär mig snabbt och förstår saker lätt",          dim:"O", k:"+" },
-    { id:46, text:"Jag föredrar konkreta fakta framför teorier",        dim:"O", k:"-" },
-    { id:47, text:"Jag gillar att reflektera och leka med idéer",       dim:"O", k:"+" },
-    { id:48, text:"Jag är inte alltid intresserad av konst och kultur", dim:"O", k:"-" },
-    { id:49, text:"Jag är nyfiken på allt möjligt",                     dim:"O", k:"+" },
-    { id:50, text:"Jag föredrar rutiner framför nya erfarenheter",      dim:"O", k:"-" },
+    // ROUND 1
+    { id:1,  text:"Är festens medelpunkt",                              dim:"E", k:"+" },
+    { id:2,  text:"Bryr mig lite om andras välmående",                  dim:"A", k:"-" },
+    { id:3,  text:"Är alltid förberedd",                                dim:"C", k:"+" },
+    { id:4,  text:"Blir lätt stressad",                                 dim:"N", k:"+" },
+    { id:5,  text:"Har ett rikt ordförråd",                             dim:"O", k:"+" },
+    // ROUND 2
+    { id:6,  text:"Pratar inte så mycket",                              dim:"E", k:"-" },
+    { id:7,  text:"Är intresserad av människor",                        dim:"A", k:"+" },
+    { id:8,  text:"Lämnar mina saker lite varstans",                    dim:"C", k:"-" },
+    { id:9,  text:"Är avslappnad det mesta av tiden",                   dim:"N", k:"-" },
+    { id:10, text:"Har svårt att förstå abstrakta idéer",               dim:"O", k:"-" },
+    // ROUND 3
+    { id:11, text:"Trivs med folk runt om mig",                         dim:"E", k:"+" },
+    { id:12, text:"Förolämpar folk",                                    dim:"A", k:"-" },
+    { id:13, text:"Uppmärksammar detaljer",                             dim:"C", k:"+" },
+    { id:14, text:"Oroar mig för saker",                                dim:"N", k:"+" },
+    { id:15, text:"Har en livlig fantasi",                              dim:"O", k:"+" },
+    // ATTENTION CHECK 1 (IRI – instructed response)
+    { id:51, text:"För att bekräfta att du läser noggrant: välj 'Stämmer ganska bra'.", dim:"CHECK", k:"+", expect:4 },
+    // ROUND 4
+    { id:16, text:"Håller mig i bakgrunden",                            dim:"E", k:"-" },
+    { id:17, text:"Förstår hur andra känner sig",                       dim:"A", k:"+" },
+    { id:18, text:"Ställer till oreda",                                 dim:"C", k:"-" },
+    { id:19, text:"Mår sällan dåligt",                                  dim:"N", k:"-" },
+    { id:20, text:"Är inte intresserad av abstrakta idéer",             dim:"O", k:"-" },
+    // ROUND 5
+    { id:21, text:"Tar initiativ till samtal",                          dim:"E", k:"+" },
+    { id:22, text:"Är inte intresserad av andras problem",              dim:"A", k:"-" },
+    { id:23, text:"Tar hand om saker direkt",                           dim:"C", k:"+" },
+    { id:24, text:"Störs lätt ur koncentrationen",                      dim:"N", k:"+" },
+    { id:25, text:"Har utmärkta idéer",                                 dim:"O", k:"+" },
+    // ROUND 6
+    { id:26, text:"Har lite att säga",                                  dim:"E", k:"-" },
+    { id:27, text:"Har ett mjukt hjärta",                               dim:"A", k:"+" },
+    { id:28, text:"Glömmer ofta att lägga tillbaka saker på plats",     dim:"C", k:"-" },
+    { id:29, text:"Blir lätt upprörd",                                  dim:"N", k:"+" },
+    { id:30, text:"Har inte bra fantasi",                               dim:"O", k:"-" },
+    // ATTENTION CHECK 2 (bogus/infrequency item)
+    { id:52, text:"Jag har aldrig använt internet.",                    dim:"CHECK", k:"+", expect:1 },
+    // ROUND 7
+    { id:31, text:"Pratar med många olika människor på fester",         dim:"E", k:"+" },
+    { id:32, text:"Är egentligen inte intresserad av andra",            dim:"A", k:"-" },
+    { id:33, text:"Gillar ordning",                                     dim:"C", k:"+" },
+    { id:34, text:"Ändrar humör ofta",                                  dim:"N", k:"+" },
+    { id:35, text:"Förstår saker snabbt",                               dim:"O", k:"+" },
+    // ROUND 8
+    { id:36, text:"Vill inte dra uppmärksamheten till mig",             dim:"E", k:"-" },
+    { id:37, text:"Tar mig tid för andra",                              dim:"A", k:"+" },
+    { id:38, text:"Smiter från mina plikter",                           dim:"C", k:"-" },
+    { id:39, text:"Har ofta humörsvängningar",                          dim:"N", k:"+" },
+    { id:40, text:"Använder avancerade ord",                            dim:"O", k:"+" },
+    // ROUND 9
+    { id:41, text:"Har inget emot att vara i centrum",                  dim:"E", k:"+" },
+    { id:42, text:"Känner andras känslor",                              dim:"A", k:"+" },
+    { id:43, text:"Följer ett schema",                                  dim:"C", k:"+" },
+    { id:44, text:"Blir lätt irriterad",                                dim:"N", k:"+" },
+    { id:45, text:"Reflekterar och funderar mycket",                    dim:"O", k:"+" },
+    // ATTENTION CHECK 3 (IRI)
+    { id:53, text:"För att bekräfta att du läser noggrant: välj 'Stämmer inte alls'.", dim:"CHECK", k:"+", expect:1 },
+    // ROUND 10
+    { id:46, text:"Är tyst bland främlingar",                           dim:"E", k:"-" },
+    { id:47, text:"Får folk att känna sig välkomna",                    dim:"A", k:"+" },
+    { id:48, text:"Är noggrann i mitt arbete",                          dim:"C", k:"+" },
+    { id:49, text:"Mår ofta dåligt",                                    dim:"N", k:"+" },
+    { id:50, text:"Är full av idéer",                                   dim:"O", k:"+" },
 ];
+
+// Scored questions only (exclude CHECK items)
+const SCORED_QUESTIONS = QUESTIONS.filter(q => q.dim !== "CHECK");
+const TOTAL_SCORED = SCORED_QUESTIONS.length; // 50
 
 // ─────────────────────────────────────────────
 // DIMENSION DESCRIPTIONS
@@ -303,8 +318,16 @@ function consentItem(id, title, desc, required) {
 function renderQuestion() {
     const q = QUESTIONS[qIdx];
     const prog = ((qIdx + 1) / QUESTIONS.length) * 100;
-    const d = DIM[q.dim];
-    const LABELS = ["", "Stämmer inte alls", "Stämmer dåligt", "Neutral", "Stämmer ganska bra", "Stämmer helt"];
+    const isCheck = q.dim === "CHECK";
+    const d = isCheck
+        ? { sv: "Kontroll", color: "#6B7280", light: "#F9FAFB", icon: "shield-check" }
+        : DIM[q.dim];
+    const LABELS = ["", "Stämmer inte alls", "Stämmer ganska dåligt", "Varken eller", "Stämmer ganska bra", "Stämmer mycket bra"];
+
+    // Scored question number (skip CHECK items)
+    const scoredBefore = QUESTIONS.slice(0, qIdx + 1).filter(x => x.dim !== "CHECK").length;
+    const displayNum = isCheck ? "–" : scoredBefore;
+    const midway = !isCheck && scoredBefore === 25;
 
     return `
     <div class="min-h-screen bg-gray-50">
@@ -312,7 +335,7 @@ function renderQuestion() {
         <div class="sticky top-0 bg-white border-b z-10">
             <div class="px-4 pt-3 pb-2">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-xs font-semibold text-gray-500">FRÅGA ${qIdx+1} AV ${QUESTIONS.length}</span>
+                    <span class="text-xs font-semibold text-gray-500">FRÅGA ${displayNum} AV ${TOTAL_SCORED}</span>
                     <span class="text-xs font-bold" style="color:${d.color}">${d.sv.toUpperCase()}</span>
                 </div>
                 <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -320,6 +343,12 @@ function renderQuestion() {
                 </div>
             </div>
         </div>
+
+        ${midway ? `
+        <div class="mx-4 mt-4 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <span class="text-2xl">🎯</span>
+            <span class="text-indigo-800 text-sm font-semibold">Du är halvvägs – bra jobbat!</span>
+        </div>` : ""}
 
         <!-- Question card -->
         <div class="px-4 pt-6 pb-4">
@@ -735,7 +764,7 @@ function calcScores() {
     const raw = { E:0, A:0, C:0, N:0, O:0 };
     const counts = { E:0, A:0, C:0, N:0, O:0 };
 
-    QUESTIONS.forEach(q => {
+    SCORED_QUESTIONS.forEach(q => {
         let v = answers[q.id] || 3;
         if (q.k === "-") v = 6 - v;
         raw[q.dim] += v;
